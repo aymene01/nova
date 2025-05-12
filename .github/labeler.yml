@@ -1,0 +1,22 @@
+# Language / Type
+rust:
+  - changed-files:
+      - any-glob-to-any-file: "src/**"
+
+devops:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file: "README.md"
+      - any-glob-to-any-file: "docs/**"
+
+config:
+  - changed-files:
+      - any-glob-to-any-file: "*.toml"
+      - any-glob-to-any-file: "*.yaml"
+      - any-glob-to-any-file: "*.yml"
+      - any-glob-to-any-file: "*.json"
+      - any-glob-to-any-file: "*.env"
+      - any-glob-to-any-file: "config/**"
