@@ -34,12 +34,12 @@ impl Config {
         let robots_count = Self::prompt_with_default("Robots count", 5);
         let map_width = Self::prompt_with_default("Map Width", 10);
 
-        return Config {
+        Config {
             map_height,
             map_width,
             robots_count,
             seed,
-        };
+        }
     }
 
     pub fn prompt_with_default<T>(name: &str, default: T) -> T
