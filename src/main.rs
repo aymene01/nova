@@ -1,3 +1,7 @@
+use env_logger::Builder;
+use log::info;
+
 fn main() {
-    println!("Hello, world nova!");
+    Builder::new().filter_level(log::LevelFilter::Info).init();
+    info!("Hello, world nova!");
 }
