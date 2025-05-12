@@ -1,4 +1,4 @@
-use crate::config::session::Config;
+use crate::config::Config;
 use clap::Command;
 
 pub fn parse_args() -> Option<Config> {

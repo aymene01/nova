@@ -2,7 +2,7 @@ mod cli;
 mod config;
 mod simulation;
 
-use config::session::Config;
+use config::Config;
 
 fn main() {
     if let Some(cfg) = cli::args::parse_args() {
