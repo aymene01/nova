@@ -1,6 +1,5 @@
-
-use std::collections::HashMap;
 use noise::Perlin;
+use std::collections::HashMap;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

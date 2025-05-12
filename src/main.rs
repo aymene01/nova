@@ -1,16 +1,15 @@
 mod cli;
-mod simulation;
 mod config;
+mod simulation;
 
 use config::session::Config;
 
 fn main() {
     if let Some(cfg) = cli::args::parse_args() {
         start_simulation(cfg);
-    } else{
+    } else {
         println!("use cmd start to start")
     }
-
 }
 
 fn start_simulation(config: Config) {

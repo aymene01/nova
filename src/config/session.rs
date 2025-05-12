@@ -31,7 +31,7 @@ impl Config {
 
         let seed = Self::prompt_with_default("seed", 42);
         let map_height = Self::prompt_with_default("Map Height", 10);
-        let robots_count= Self::prompt_with_default("Robots count", 5);
+        let robots_count = Self::prompt_with_default("Robots count", 5);
         let map_width = Self::prompt_with_default("Map Width", 10);
 
         return Config {
