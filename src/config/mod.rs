@@ -77,7 +77,7 @@ mod tests {
         // Simulate empty input
         let _ = Arc::new(Mutex::new(Vec::<u8>::new()));
         let _ = Arc::new(Mutex::new(Vec::<u8>::new()));
-        
+
         // This test just verifies that pressing Enter for all prompts gives defaults
         let config = Config {
             seed: 42,
@@ -85,28 +85,28 @@ mod tests {
             map_height: 10,
             robots_count: 5,
         };
-        
+
         assert_eq!(config.seed, 42);
         assert_eq!(config.map_width, 10);
         assert_eq!(config.map_height, 10);
         assert_eq!(config.robots_count, 5);
     }
-    
+
     #[test]
     fn test_prompt_with_default() {
         let input: &'static str = "\n";
         let result = Config::prompt_with_default_test("test", 42, input);
         assert_eq!(result, 42);
-        
+
         let input: &'static str = "100\n";
         let result = Config::prompt_with_default_test("test", 42, input);
         assert_eq!(result, 100);
-        
+
         let input: &'static str = "not_a_number\n";
         let result = Config::prompt_with_default_test("test", 42, input);
         assert_eq!(result, 42);
     }
-    
+
     impl Config {
         fn prompt_with_default_test<T>(_name: &str, default: T, input: &str) -> T
         where
@@ -117,7 +117,7 @@ mod tests {
             if trimmed.is_empty() {
                 default
             } else {
-                trimmed.parse().unwrap_or_else(|_| default)
+                trimmed.parse().unwrap_or(default)
             }
         }
     }
