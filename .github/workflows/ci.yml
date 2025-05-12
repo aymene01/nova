@@ -55,7 +55,7 @@ jobs:
         run: cargo test --all
 
   build:
-    name: Build Project
+    name: Cross platform build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
