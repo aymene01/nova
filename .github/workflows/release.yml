@@ -1,0 +1,99 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  prerequisite:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: prerequisite
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build Project
+    needs: release
+    if: needs.release.outputs.release_created == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Rename and compress binary
+        shell: bash
+        run: |
+          BIN_NAME="nova-${{ matrix.target }}"
+          cp target/${{ matrix.target }}/release/nova "$BIN_NAME"
+          echo "Created binary: $BIN_NAME"
+          zip "$BIN_NAME.zip" "$BIN_NAME"
+          echo "Zipped binary: $BIN_NAME.zip"
+
+      - name: Upload binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release.outputs.tag_name }}
+          files: nova-${{ matrix.target }}.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Notify Discord
+    needs: [build, release]
+    if: needs.release.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord notification
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d '{
+                     "username": "Release Bot 🚀",
+                     "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+                     "embeds": [
+                       {
+                         "title": "🚨 New Release of **@nova** is Here! 🚨",
+                         "description": "Version: **${{ needs.release.outputs.tag_name }}**\nCheck out the latest release and new features below!",
+                         "url": "https://github.com/${{ github.repository }}/releases/tag/${{ needs.release.outputs.tag_name }}",
+                         "color": 5814783,
+                         "footer": {
+                           "text": "By @nova Team"
+                         }
+                       }
+                     ]
+                   }' \
+               ${{ secrets.DISCORD_WEBHOOK }}
