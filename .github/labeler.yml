@@ -3,7 +3,7 @@ rust:
   - changed-files:
       - any-glob-to-any-file: "src/**"
 
-devops:
+github-actions:
   - changed-files:
       - any-glob-to-any-file: ".github/**"
 
@@ -20,3 +20,5 @@ config:
       - any-glob-to-any-file: "*.json"
       - any-glob-to-any-file: "*.env"
       - any-glob-to-any-file: "config/**"
+      - any-glob-to-any-file: "Makefile"
+      - any-glob-to-any-file: "makefile"

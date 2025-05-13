@@ -1,12 +1,21 @@
-# Language / Type
+# colors.yaml
 - name: rust
-  color: "#ffa500" # orange
+  color: "ffa500"
 
 - name: devops
-  color: "#7bd3ea"
+  color: "7bd3ea"
 
 - name: docs
-  color: "#F4D1B7"
+  color: "F4D1B7"
 
 - name: config
-  color: "#8e44ad"
+  color: "8e44ad"
+
+- name: github-actions
+  color: "7bd3ea"
+
+- name: cli
+  color: "4CAF50" # Green
+
+- name: simulation
+  color: "FF5733" # Orange-Red
