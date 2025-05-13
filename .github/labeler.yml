@@ -1,16 +1,22 @@
-# Language / Type
+# config.yaml
 rust:
   - changed-files:
       - any-glob-to-any-file: "src/**"
+  - label: "rust"
+  - color: "#ffa500"
 
-github-actions:
+devops:
   - changed-files:
       - any-glob-to-any-file: ".github/**"
+  - label: "devops"
+  - color: "#7bd3ea"
 
 docs:
   - changed-files:
       - any-glob-to-any-file: "README.md"
       - any-glob-to-any-file: "docs/**"
+  - label: "docs"
+  - color: "#F4D1B7"
 
 config:
   - changed-files:
@@ -22,3 +28,23 @@ config:
       - any-glob-to-any-file: "config/**"
       - any-glob-to-any-file: "Makefile"
       - any-glob-to-any-file: "makefile"
+  - label: "config"
+  - color: "#8e44ad"
+
+cli:
+  - changed-files:
+      - any-glob-to-any-file: "src/cli/**"
+  - label: "cli"
+  - color: "#4CAF50"
+
+simulation:
+  - changed-files:
+      - any-glob-to-any-file: "src/simulation/**"
+  - label: "simulation"
+  - color: "#FF5733"
+
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**"
+  - label: "github-actions"
+  - color: "#7bd3ea"
