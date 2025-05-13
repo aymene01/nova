@@ -3,7 +3,7 @@ rust:
   - changed-files:
       - any-glob-to-any-file: "src/**"
 
-devops:
+github-actions:
   - changed-files:
       - any-glob-to-any-file: ".github/**"
 
