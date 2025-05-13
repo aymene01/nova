@@ -68,7 +68,9 @@ impl Config {
             match trimmed.parse() {
                 Ok(val) => return val,
                 Err(_) => {
-                    println!("❌ Invalid input. Please enter a valid number or press Enter for default.");
+                    println!(
+                        "❌ Invalid input. Please enter a valid number or press Enter for default."
+                    );
                 }
             }
         }
