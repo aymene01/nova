@@ -1,1 +1,4 @@
 /target
+
+.cursor/
+map_seed_*.json
