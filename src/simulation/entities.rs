@@ -20,6 +20,21 @@ pub struct Map {
     seed: u64,
 }
 
+impl Map {
+    /// Creates a new Map for testing purposes
+    pub fn new_test_map(width: usize, height: usize) -> Self {
+        Map {
+            width,
+            height,
+            terrain: vec![vec![0; width]; height],
+            resources: HashMap::new(),
+            discovered: vec![vec![false; width]; height],
+            noise: Perlin::new(42),
+            seed: 42,
+        }
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum RobotType {
