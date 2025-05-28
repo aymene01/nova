@@ -4,6 +4,7 @@ use crate::simulation::robot_ai::behaviors::{
 };
 use crate::simulation::robot_ai::types::Task;
 
+#[allow(dead_code)]
 pub trait RobotBehavior {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task>;
     fn get_preferred_resources(&self) -> Vec<ResourceType>;
@@ -11,6 +12,7 @@ pub trait RobotBehavior {
     fn can_perform_task(&self, task: &Task) -> bool;
 }
 
+#[allow(dead_code)]
 pub fn create_behavior(robot_type: &RobotType) -> Box<dyn RobotBehavior> {
     match robot_type {
         RobotType::Explorer => Box::new(ExplorerBehavior),

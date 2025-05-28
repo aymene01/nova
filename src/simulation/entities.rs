@@ -22,6 +22,7 @@ pub struct Map {
 
 impl Map {
     /// Creates a new Map for testing purposes
+    #[allow(dead_code)]
     pub fn new_test_map(width: usize, height: usize) -> Self {
         Map {
             width,

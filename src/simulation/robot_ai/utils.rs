@@ -81,11 +81,10 @@ impl SearchUtils {
         map: &Map,
     ) -> Option<(usize, usize)> {
         Self::radius_search(robot_x, robot_y, search_radius, map, |x, y, map| {
-            if let Some((ResourceType::ScientificInterest, _)) = map.resources.get(&(x, y)) {
-                true
-            } else {
-                false
-            }
+            matches!(
+                map.resources.get(&(x, y)),
+                Some((ResourceType::ScientificInterest, _))
+            )
         })
     }
 }

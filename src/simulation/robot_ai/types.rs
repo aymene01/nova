@@ -1,6 +1,7 @@
 use crate::simulation::entities::ResourceType;
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum RobotState {
     Idle,
     Exploring,
@@ -11,10 +12,12 @@ pub enum RobotState {
     Searching,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Task {
     pub task_type: TaskType,
+    #[allow(dead_code)]
     pub target_position: Option<(usize, usize)>,
+    #[allow(dead_code)]
     pub priority: u8,
 }
 
@@ -50,6 +53,7 @@ pub enum AnalysisType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
 pub enum Direction {
     North,
     South,
@@ -61,8 +65,9 @@ pub enum Direction {
     Southwest,
 }
 
+#[allow(dead_code)]
 impl Direction {
-    pub fn to_delta(&self) -> (i32, i32) {
+    pub fn to_delta(self) -> (i32, i32) {
         match self {
             Direction::North => (0, -1),
             Direction::South => (0, 1),

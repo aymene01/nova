@@ -62,13 +62,11 @@ impl ScientistBehavior {
     }
 
     fn determine_analysis_type(&self, pos: (usize, usize), map: &Map) -> AnalysisType {
-        let terrain_value = map.terrain[pos.1][pos.0];
-        let nearby_resources = self.count_nearby_resources(pos, map);
+        let _nearby_count = self.count_nearby_resources(pos, map);
+        let _seed = pos.0 * 1000 + pos.1;
 
-        match (terrain_value, nearby_resources) {
-            (0, count) if count > 2 => AnalysisType::Chemical,
-            _ => AnalysisType::Chemical,
-        }
+        // Only Chemical analysis type is available
+        AnalysisType::Chemical
     }
 
     fn count_nearby_resources(&self, pos: (usize, usize), map: &Map) -> usize {

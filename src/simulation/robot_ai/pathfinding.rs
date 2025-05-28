@@ -3,8 +3,10 @@ use crate::simulation::robot_ai::types::Direction;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
+#[allow(dead_code)]
 pub struct Pathfinder;
 
+#[allow(dead_code)]
 impl Pathfinder {
     pub fn new() -> Self {
         Pathfinder
