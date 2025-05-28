@@ -24,11 +24,11 @@ impl SearchUtils {
                 for dy in -radius..=radius {
                     let x = robot_x + dx;
                     let y = robot_y + dy;
-                    
+
                     if x >= 0 && y >= 0 && (x as usize) < map.width && (y as usize) < map.height {
                         let x = x as usize;
                         let y = y as usize;
-                        
+
                         if predicate(x, y, map) {
                             return Some((x, y));
                         }
@@ -53,8 +53,11 @@ impl SearchUtils {
             } else {
                 false
             }
-        }).and_then(|(x, y)| {
-            map.resources.get(&(x, y)).map(|(resource_type, _)| ((x, y), resource_type.clone()))
+        })
+        .and_then(|(x, y)| {
+            map.resources
+                .get(&(x, y))
+                .map(|(resource_type, _)| ((x, y), resource_type.clone()))
         })
     }
 
@@ -99,22 +102,18 @@ mod tests {
     #[test]
     fn test_radius_search_basic_functionality() {
         let map = create_test_map();
-        
-        let result = SearchUtils::radius_search(5, 5, 2, &map, |x, y, _| {
-            x == 6 && y == 6
-        });
-        
+
+        let result = SearchUtils::radius_search(5, 5, 2, &map, |x, y, _| x == 6 && y == 6);
+
         assert_eq!(result, Some((6, 6)));
     }
 
     #[test]
     fn test_radius_search_respects_bounds() {
         let map = create_test_map();
-        
-        let result = SearchUtils::radius_search(0, 0, 2, &map, |x, y, _| {
-            x > 10 || y > 10
-        });
-        
+
+        let result = SearchUtils::radius_search(0, 0, 2, &map, |x, y, _| x > 10 || y > 10);
+
         assert_eq!(result, None);
     }
 
@@ -123,10 +122,10 @@ mod tests {
         let mut map = create_test_map();
         map.resources.insert((3, 3), (ResourceType::Energy, 10));
         map.resources.insert((7, 7), (ResourceType::Mineral, 15));
-        
+
         let allowed_types = vec![ResourceType::Energy, ResourceType::Mineral];
         let result = SearchUtils::find_nearest_resource(2, 2, 5, &map, &allowed_types);
-        
+
         assert!(result.is_some());
         let ((x, y), resource_type) = result.unwrap();
         assert_eq!((x, y), (3, 3));
@@ -137,9 +136,9 @@ mod tests {
     fn test_find_nearest_unexplored() {
         let mut map = create_test_map();
         map.discovered[5][5] = true;
-        
+
         let result = SearchUtils::find_nearest_unexplored(5, 5, 3, &map);
-        
+
         assert!(result.is_some());
         let (x, y) = result.unwrap();
         assert!(!map.discovered[y][x]);
@@ -149,10 +148,11 @@ mod tests {
     #[test]
     fn test_find_nearest_scientific_interest() {
         let mut map = create_test_map();
-        map.resources.insert((4, 4), (ResourceType::ScientificInterest, 8));
-        
+        map.resources
+            .insert((4, 4), (ResourceType::ScientificInterest, 8));
+
         let result = SearchUtils::find_nearest_scientific_interest(3, 3, 5, &map);
-        
+
         assert_eq!(result, Some((4, 4)));
     }
-} 
+}

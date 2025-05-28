@@ -1,6 +1,8 @@
-use crate::simulation::entities::{Robot, RobotType, ResourceType, Map, Station};
+use crate::simulation::entities::{Map, ResourceType, Robot, RobotType, Station};
+use crate::simulation::robot_ai::behaviors::{
+    ExplorerBehavior, HarvesterBehavior, ScientistBehavior,
+};
 use crate::simulation::robot_ai::types::Task;
-use crate::simulation::robot_ai::behaviors::{ExplorerBehavior, HarvesterBehavior, ScientistBehavior};
 
 pub trait RobotBehavior {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task>;
@@ -20,7 +22,9 @@ pub fn create_behavior(robot_type: &RobotType) -> Box<dyn RobotBehavior> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::robot_ai::types::{TaskType, ExploreTask, HarvestTask, AnalyzeTask, AnalysisType};
+    use crate::simulation::robot_ai::types::{
+        AnalysisType, AnalyzeTask, ExploreTask, HarvestTask, TaskType,
+    };
     use std::collections::HashMap;
 
     fn create_test_robot(robot_type: RobotType, x: usize, y: usize, energy: u32) -> Robot {
@@ -58,14 +62,20 @@ mod tests {
     fn test_create_harvester_behavior() {
         let behavior = create_behavior(&RobotType::Harvester);
         assert_eq!(behavior.get_energy_consumption_rate(), 3);
-        assert_eq!(behavior.get_preferred_resources(), vec![ResourceType::Energy, ResourceType::Mineral]);
+        assert_eq!(
+            behavior.get_preferred_resources(),
+            vec![ResourceType::Energy, ResourceType::Mineral]
+        );
     }
 
     #[test]
     fn test_create_scientist_behavior() {
         let behavior = create_behavior(&RobotType::Scientist);
         assert_eq!(behavior.get_energy_consumption_rate(), 4);
-        assert_eq!(behavior.get_preferred_resources(), vec![ResourceType::ScientificInterest]);
+        assert_eq!(
+            behavior.get_preferred_resources(),
+            vec![ResourceType::ScientificInterest]
+        );
     }
 
     #[test]
@@ -74,9 +84,18 @@ mod tests {
         let harvester = create_behavior(&RobotType::Harvester);
         let scientist = create_behavior(&RobotType::Scientist);
 
-        assert_ne!(explorer.get_energy_consumption_rate(), harvester.get_energy_consumption_rate());
-        assert_ne!(harvester.get_energy_consumption_rate(), scientist.get_energy_consumption_rate());
-        assert_ne!(explorer.get_energy_consumption_rate(), scientist.get_energy_consumption_rate());
+        assert_ne!(
+            explorer.get_energy_consumption_rate(),
+            harvester.get_energy_consumption_rate()
+        );
+        assert_ne!(
+            harvester.get_energy_consumption_rate(),
+            scientist.get_energy_consumption_rate()
+        );
+        assert_ne!(
+            explorer.get_energy_consumption_rate(),
+            scientist.get_energy_consumption_rate()
+        );
     }
 
     #[test]
@@ -142,7 +161,7 @@ mod tests {
         let low_energy_explorer = create_test_robot(RobotType::Explorer, 2, 2, 15);
         let explorer_behavior = create_behavior(&RobotType::Explorer);
         let task = explorer_behavior.decide_next_action(&low_energy_explorer, &map, &station);
-        
+
         assert!(task.is_some());
         if let Some(task) = task {
             assert_eq!(task.task_type, TaskType::ReturnToStation);
@@ -152,7 +171,7 @@ mod tests {
         let low_energy_harvester = create_test_robot(RobotType::Harvester, 2, 2, 10);
         let harvester_behavior = create_behavior(&RobotType::Harvester);
         let task = harvester_behavior.decide_next_action(&low_energy_harvester, &map, &station);
-        
+
         assert!(task.is_some());
         if let Some(task) = task {
             assert_eq!(task.task_type, TaskType::ReturnToStation);
@@ -161,7 +180,7 @@ mod tests {
         let low_energy_scientist = create_test_robot(RobotType::Scientist, 2, 2, 20);
         let scientist_behavior = create_behavior(&RobotType::Scientist);
         let task = scientist_behavior.decide_next_action(&low_energy_scientist, &map, &station);
-        
+
         assert!(task.is_some());
         if let Some(task) = task {
             assert_eq!(task.task_type, TaskType::ReturnToStation);
@@ -217,4 +236,4 @@ mod tests {
             assert_ne!(task.task_type, TaskType::ReturnToStation);
         }
     }
-} 
+}

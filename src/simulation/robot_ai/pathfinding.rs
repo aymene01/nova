@@ -1,7 +1,7 @@
 use crate::simulation::entities::Map;
 use crate::simulation::robot_ai::types::Direction;
-use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 
 pub struct Pathfinder;
 
@@ -58,12 +58,12 @@ impl Pathfinder {
             if current.position == goal {
                 let mut path = vec![current.position];
                 let mut current_pos = current.position;
-                
+
                 while let Some(&parent) = came_from.get(&current_pos) {
                     path.push(parent);
                     current_pos = parent;
                 }
-                
+
                 path.reverse();
                 return Some(path);
             }
@@ -73,13 +73,13 @@ impl Pathfinder {
                 let new_x = current.position.0 as i32 + dx;
                 let new_y = current.position.1 as i32 + dy;
 
-                if new_x < 0 || new_y < 0 || 
-                   new_x >= map.width as i32 || new_y >= map.height as i32 {
+                if new_x < 0 || new_y < 0 || new_x >= map.width as i32 || new_y >= map.height as i32
+                {
                     continue;
                 }
 
                 let neighbor = (new_x as usize, new_y as usize);
-                
+
                 if map.terrain[neighbor.1][neighbor.0] != 0 {
                     continue;
                 }
@@ -89,7 +89,7 @@ impl Pathfinder {
                 if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&u32::MAX) {
                     came_from.insert(neighbor, current.position);
                     g_score.insert(neighbor, tentative_g_score);
-                    
+
                     let f_score = tentative_g_score + self.heuristic(neighbor, goal);
                     open_set.push(Node {
                         position: neighbor,
@@ -109,13 +109,18 @@ impl Pathfinder {
         (dx + dy) as u32
     }
 
-    pub fn get_next_move(&self, current: (usize, usize), target: (usize, usize), map: &Map) -> Option<Direction> {
+    pub fn get_next_move(
+        &self,
+        current: (usize, usize),
+        target: (usize, usize),
+        map: &Map,
+    ) -> Option<Direction> {
         if let Some(path) = self.find_path(current, target, map) {
             if path.len() > 1 {
                 let next_pos = path[1];
                 let dx = next_pos.0 as i32 - current.0 as i32;
                 let dy = next_pos.1 as i32 - current.1 as i32;
-                
+
                 match (dx, dy) {
                     (0, -1) => Some(Direction::North),
                     (0, 1) => Some(Direction::South),
@@ -145,7 +150,11 @@ mod tests {
         Map::new_test_map(width, height)
     }
 
-    fn create_map_with_obstacles(width: usize, height: usize, obstacles: Vec<(usize, usize)>) -> Map {
+    fn create_map_with_obstacles(
+        width: usize,
+        height: usize,
+        obstacles: Vec<(usize, usize)>,
+    ) -> Map {
         let mut map = create_test_map(width, height);
         for (x, y) in obstacles {
             if x < width && y < height {
@@ -169,7 +178,7 @@ mod tests {
         let goal = (2, 2);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
+
         assert!(path.is_some());
         let path = path.unwrap();
         assert_eq!(path.len(), 1);
@@ -184,7 +193,7 @@ mod tests {
         let goal = (3, 2);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
+
         assert!(path.is_some());
         let path = path.unwrap();
         assert_eq!(path.len(), 2);
@@ -200,7 +209,7 @@ mod tests {
         let goal = (5, 0);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
+
         assert!(path.is_some());
         let path = path.unwrap();
         assert_eq!(path.len(), 6);
@@ -217,14 +226,18 @@ mod tests {
         let goal = (2, 1);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
+
         assert!(path.is_some());
         let path = path.unwrap();
         assert_eq!(path[0], start);
         assert_eq!(path[path.len() - 1], goal);
-        
+
         for &(x, y) in &path {
-            assert_eq!(map.terrain[y][x], 0, "Path goes through obstacle at ({}, {})", x, y);
+            assert_eq!(
+                map.terrain[y][x], 0,
+                "Path goes through obstacle at ({}, {})",
+                x, y
+            );
         }
     }
 
@@ -244,8 +257,11 @@ mod tests {
         let goal = (2, 2);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
-        assert!(path.is_none(), "Should not find path to completely blocked goal");
+
+        assert!(
+            path.is_none(),
+            "Should not find path to completely blocked goal"
+        );
     }
 
     #[test]
@@ -256,7 +272,7 @@ mod tests {
         let goal = (10, 10);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
+
         assert!(path.is_none(), "Should not find path to out-of-bounds goal");
     }
 
@@ -267,8 +283,11 @@ mod tests {
         let target = (2, 2);
 
         let direction = pathfinder.get_next_move(current, target, &create_test_map(5, 5));
-        
-        assert!(direction.is_none(), "Should not move when already at target");
+
+        assert!(
+            direction.is_none(),
+            "Should not move when already at target"
+        );
     }
 
     #[test]
@@ -314,7 +333,7 @@ mod tests {
         let target = (4, 4);
 
         let direction = pathfinder.get_next_move(current, target, &create_test_map(6, 6));
-        
+
         assert!(direction.is_some());
         assert_eq!(direction, Some(Direction::Southeast));
     }
@@ -322,7 +341,7 @@ mod tests {
     #[test]
     fn test_heuristic_function() {
         let pathfinder = Pathfinder::new();
-        
+
         assert_eq!(pathfinder.heuristic((0, 0), (3, 4)), 7);
         assert_eq!(pathfinder.heuristic((2, 2), (2, 2)), 0);
         assert_eq!(pathfinder.heuristic((1, 1), (4, 5)), 7);
@@ -340,7 +359,10 @@ mod tests {
         let duration = start_time.elapsed();
 
         assert!(path.is_some());
-        assert!(duration.as_millis() < 100, "Pathfinding should be fast on small maps");
+        assert!(
+            duration.as_millis() < 100,
+            "Pathfinding should be fast on small maps"
+        );
     }
 
     #[test]
@@ -351,10 +373,10 @@ mod tests {
         let goal = (2, 2);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
+
         assert!(path.is_some());
         let path = path.unwrap();
-        
+
         assert!(path.len() <= 5, "Path should be reasonably optimal");
         assert_eq!(path[0], start);
         assert_eq!(path[path.len() - 1], goal);
@@ -363,7 +385,7 @@ mod tests {
     #[test]
     fn test_pathfinding_with_complex_maze() {
         let pathfinder = Pathfinder::new();
-        
+
         let mut obstacles = Vec::new();
         for x in 1..4 {
             obstacles.push((x, 1));
@@ -371,20 +393,20 @@ mod tests {
         }
         obstacles.push((1, 2));
         obstacles.push((3, 2));
-        
+
         let map = create_map_with_obstacles(5, 5, obstacles);
         let start = (0, 0);
         let goal = (4, 4);
 
         let path = pathfinder.find_path(start, goal, &map);
-        
+
         assert!(path.is_some());
         let path = path.unwrap();
         assert_eq!(path[0], start);
         assert_eq!(path[path.len() - 1], goal);
-        
+
         for &(x, y) in &path {
             assert_eq!(map.terrain[y][x], 0, "Path should not go through obstacles");
         }
     }
-} 
+}

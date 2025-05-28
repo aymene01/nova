@@ -1,6 +1,6 @@
-use crate::simulation::entities::{Robot, ResourceType, Map, Station};
+use crate::simulation::entities::{Map, ResourceType, Robot, Station};
 use crate::simulation::robot_ai::behavior::RobotBehavior;
-use crate::simulation::robot_ai::types::{Task, TaskType, ExploreTask};
+use crate::simulation::robot_ai::types::{ExploreTask, Task, TaskType};
 use crate::simulation::robot_ai::utils::SearchUtils;
 
 pub struct ExplorerBehavior;
@@ -49,7 +49,10 @@ impl RobotBehavior for ExplorerBehavior {
     }
 
     fn can_perform_task(&self, task: &Task) -> bool {
-        matches!(task.task_type, TaskType::Explore(_) | TaskType::ReturnToStation)
+        matches!(
+            task.task_type,
+            TaskType::Explore(_) | TaskType::ReturnToStation
+        )
     }
 }
 
@@ -61,16 +64,20 @@ impl ExplorerBehavior {
     fn get_random_exploration_target(&self, robot: &Robot, map: &Map) -> Option<(usize, usize)> {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         robot.id.hash(&mut hasher);
         robot.x.hash(&mut hasher);
         robot.y.hash(&mut hasher);
         let seed = hasher.finish();
-        
-        let target_x = ((seed % map.width as u64) as usize).max(1).min(map.width - 2);
-        let target_y = (((seed >> 16) % map.height as u64) as usize).max(1).min(map.height - 2);
-        
+
+        let target_x = ((seed % map.width as u64) as usize)
+            .max(1)
+            .min(map.width - 2);
+        let target_y = (((seed >> 16) % map.height as u64) as usize)
+            .max(1)
+            .min(map.height - 2);
+
         if map.terrain[target_y][target_x] == 0 {
             Some((target_x, target_y))
         } else {
@@ -82,8 +89,10 @@ impl ExplorerBehavior {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::entities::{Robot, Station, Map, ResourceType, RobotType};
-    use crate::simulation::robot_ai::types::{Task, TaskType, ExploreTask, HarvestTask, AnalyzeTask, AnalysisType};
+    use crate::simulation::entities::{Map, ResourceType, Robot, RobotType, Station};
+    use crate::simulation::robot_ai::types::{
+        AnalysisType, AnalyzeTask, ExploreTask, HarvestTask, Task, TaskType,
+    };
     use std::collections::HashMap;
 
     fn create_test_robot(x: usize, y: usize, energy: u32) -> Robot {
@@ -125,7 +134,7 @@ mod tests {
         let low_energy_robot = create_test_robot(3, 3, 15);
 
         let task = explorer.decide_next_action(&low_energy_robot, &map, &station);
-        
+
         assert!(task.is_some());
         let task = task.unwrap();
         assert_eq!(task.task_type, TaskType::ReturnToStation);
@@ -142,7 +151,7 @@ mod tests {
         carrying_robot.carrying = Some((ResourceType::ScientificInterest, 5));
 
         let task = explorer.decide_next_action(&carrying_robot, &map, &station);
-        
+
         assert!(task.is_some());
         let task = task.unwrap();
         assert_eq!(task.task_type, TaskType::ReturnToStation);
@@ -152,7 +161,7 @@ mod tests {
     #[test]
     fn test_explorer_can_perform_exploration_tasks() {
         let explorer = ExplorerBehavior;
-        
+
         let explore_task = Task {
             task_type: TaskType::Explore(ExploreTask {
                 target_area: (5, 5),
@@ -175,7 +184,7 @@ mod tests {
     #[test]
     fn test_explorer_cannot_perform_non_exploration_tasks() {
         let explorer = ExplorerBehavior;
-        
+
         let harvest_task = Task {
             task_type: TaskType::Harvest(HarvestTask {
                 resource_type: ResourceType::Energy,
@@ -209,10 +218,10 @@ mod tests {
         map.discovered[3][5] = true;
 
         let task = explorer.decide_next_action(&robot, &map, &station);
-        
+
         assert!(task.is_some());
         let task = task.unwrap();
-        
+
         if let TaskType::Explore(explore_task) = task.task_type {
             assert_eq!(explore_task.radius, 3);
             assert!(task.target_position.is_some());
@@ -229,10 +238,10 @@ mod tests {
         let healthy_robot = create_test_robot(1, 1, 50);
 
         let task = explorer.decide_next_action(&healthy_robot, &map, &station);
-        
+
         assert!(task.is_some());
         let task = task.unwrap();
-        
+
         assert_ne!(task.task_type, TaskType::ReturnToStation);
         assert!(matches!(task.task_type, TaskType::Explore(_)));
     }
@@ -244,9 +253,9 @@ mod tests {
         let robot = create_test_robot(5, 5, 50);
 
         map.discovered[5][5] = true;
-        
+
         let result = explorer.find_unexplored_area(&robot, &map);
-        
+
         if let Some((x, y)) = result {
             assert!(!map.discovered[y][x]);
             assert_eq!(map.terrain[y][x], 0);
@@ -261,13 +270,13 @@ mod tests {
 
         let target1 = explorer.get_random_exploration_target(&robot, &map);
         let target2 = explorer.get_random_exploration_target(&robot, &map);
-        
+
         assert_eq!(target1, target2);
-        
+
         if let Some((x, y)) = target1 {
             assert!(x < map.width);
             assert!(y < map.height);
             assert_eq!(map.terrain[y][x], 0);
         }
     }
-} 
+}

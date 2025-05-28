@@ -46,7 +46,7 @@ pub struct AnalyzeTask {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AnalysisType {
-    Chemical
+    Chemical,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -87,4 +87,4 @@ impl Direction {
             Direction::Southwest,
         ]
     }
-} 
+}

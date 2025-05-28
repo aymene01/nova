@@ -4,4 +4,4 @@ pub mod scientist;
 
 pub use explorer::ExplorerBehavior;
 pub use harvester::HarvesterBehavior;
-pub use scientist::ScientistBehavior; 
+pub use scientist::ScientistBehavior;
