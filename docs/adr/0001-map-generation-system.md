@@ -6,11 +6,11 @@
 
 ## Change Log
 
-- [approved](#) 2024-06-05
+- [approved](#) 2025-05-07
 
 ## Referenced Use Case(s)
 
-- [Nova Project Requirements](../../development_plan.md) - Map generation with obstacles, resource placement, and reproducibility from seed
+- Map generation with obstacles, resource placement, and reproducibility from seed
 
 ## Context
 
@@ -105,8 +105,6 @@ Custom serialization is implemented to handle tuple keys in the resource HashMap
 
 2. **Balancing**: The thresholds for terrain and resource generation may need adjustment to create balanced and interesting maps. The current values are based on preliminary testing.
 
-3. **Visualization**: The terminal-based visualization has limitations for large maps. Future improvements may include more advanced visualization options.
-
 ## Decision
 
 The implemented design provides a solid foundation for the Nova simulation with the following key decisions:
@@ -126,11 +124,10 @@ Future enhancements might include:
 - More terrain types with special properties
 - Dynamic resource regeneration
 - Environmental effects like day/night cycles
-- Improved visualization options
 
 ## Other Related ADRs
 
-No other ADRs at this time.
+- [ADR-0002: Visualization System](./0002-visualization-system.md) - Addresses the interactive visualization requirements for the map system
 
 ## References
 
