@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/aymene01/nova/compare/@nova-v0.2.0...@nova-v0.3.0) (2025-06-18)
+
+
+### Features
+
+* **ai:** implement intelligent robot pathfinding and energy management system ([#12](https://github.com/aymene01/nova/issues/12)) ([2814a5d](https://github.com/aymene01/nova/commit/2814a5dba222260b08e722981aaf443bc328f345))
+
 ## [0.2.0](https://github.com/aymene01/nova/compare/@nova-v0.1.0...@nova-v0.2.0) (2025-06-18)
 
 
