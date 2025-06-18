@@ -1,4 +1,5 @@
-use crate::simulation::entities::{Direction, Robot, RobotState, RobotType};
+use crate::simulation::entities::{Direction, Robot, RobotState, RobotType, Map};
+use crate::simulation::pathfinding::Pathfinder;
 
 /// Action that a robot can perform
 #[derive(Debug, Clone, PartialEq)]
@@ -12,7 +13,7 @@ pub enum RobotAction {
 /// Trait for robot AI behavior
 #[allow(dead_code)]
 pub trait RobotBehavior {
-    fn decide_action(&self, robot: &Robot) -> RobotAction;
+    fn decide_action(&self, robot: &Robot, map: &Map) -> RobotAction;
     fn can_execute(&self, robot: &Robot, action: &RobotAction) -> bool;
 }
 
@@ -21,10 +22,22 @@ pub trait RobotBehavior {
 pub struct ExplorerBehavior;
 
 impl RobotBehavior for ExplorerBehavior {
-    fn decide_action(&self, robot: &Robot) -> RobotAction {
+    fn decide_action(&self, robot: &Robot, map: &Map) -> RobotAction {
         match robot.state() {
-            RobotState::Idle => RobotAction::Move(Direction::North),
-            RobotState::Exploring => RobotAction::Move(Direction::East),
+            RobotState::Idle | RobotState::Exploring => {
+                // Find nearest unexplored area
+                if let Some(unexplored_pos) = Self::find_nearest_unexplored(robot.position(), map) {
+                    if let Some(direction) = Pathfinder::get_direction_to_goal(
+                        robot.position(),
+                        unexplored_pos,
+                        map,
+                    ) {
+                        return RobotAction::Move(direction);
+                    }
+                }
+                // Fallback to original behavior if no pathfinding possible
+                RobotAction::Move(Direction::North)
+            }
             _ => RobotAction::Idle,
         }
     }
@@ -37,12 +50,51 @@ impl RobotBehavior for ExplorerBehavior {
     }
 }
 
+impl ExplorerBehavior {
+    /// Find the nearest unexplored position
+    fn find_nearest_unexplored(from: (usize, usize), map: &Map) -> Option<(usize, usize)> {
+        let mut closest = None;
+        let mut min_distance = u32::MAX;
+
+        // Simple search in a spiral pattern around the robot
+        for radius in 1..=5 {
+            for dx in 0..=radius {
+                for dy in 0..=radius {
+                    let positions = vec![
+                        (from.0.saturating_add(dx), from.1.saturating_add(dy)),
+                        (from.0.saturating_sub(dx), from.1.saturating_add(dy)),
+                        (from.0.saturating_add(dx), from.1.saturating_sub(dy)),
+                        (from.0.saturating_sub(dx), from.1.saturating_sub(dy)),
+                    ];
+
+                    for pos in positions {
+                        if pos.0 < map.width && pos.1 < map.height {
+                            if let Ok(false) = map.is_discovered(pos.0, pos.1) {
+                                let distance = Pathfinder::manhattan_distance(from, pos);
+                                if distance < min_distance {
+                                    min_distance = distance;
+                                    closest = Some(pos);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if closest.is_some() {
+                break;
+            }
+        }
+
+        closest
+    }
+}
+
 /// Harvester robot behavior - focuses on collecting energy and minerals
 #[allow(dead_code)]
 pub struct HarvesterBehavior;
 
 impl RobotBehavior for HarvesterBehavior {
-    fn decide_action(&self, robot: &Robot) -> RobotAction {
+    fn decide_action(&self, robot: &Robot, _map: &Map) -> RobotAction {
         match robot.state() {
             RobotState::Idle => RobotAction::Move(Direction::South),
             RobotState::MovingToResource => RobotAction::CollectResource,
@@ -65,7 +117,7 @@ impl RobotBehavior for HarvesterBehavior {
 pub struct ScientistBehavior;
 
 impl RobotBehavior for ScientistBehavior {
-    fn decide_action(&self, robot: &Robot) -> RobotAction {
+    fn decide_action(&self, robot: &Robot, _map: &Map) -> RobotAction {
         match robot.state() {
             RobotState::Idle => RobotAction::Move(Direction::East),
             RobotState::Exploring => RobotAction::Move(Direction::West),
@@ -133,8 +185,9 @@ mod tests {
     fn explorer_decides_to_move_when_idle() {
         let robot = Robot::new(1, RobotType::Explorer, 5, 5, 100);
         let behavior = ExplorerBehavior;
+        let map = Map::new_test_map(10, 10);
 
-        let action = behavior.decide_action(&robot);
+        let action = behavior.decide_action(&robot, &map);
 
         assert_eq!(action, RobotAction::Move(Direction::North));
     }
@@ -154,8 +207,9 @@ mod tests {
     fn harvester_decides_to_move_when_idle() {
         let robot = Robot::new(2, RobotType::Harvester, 5, 5, 100);
         let behavior = HarvesterBehavior;
+        let map = Map::new_test_map(10, 10);
 
-        let action = behavior.decide_action(&robot);
+        let action = behavior.decide_action(&robot, &map);
 
         assert_eq!(action, RobotAction::Move(Direction::South));
     }
@@ -165,8 +219,9 @@ mod tests {
         let mut robot = Robot::new(2, RobotType::Harvester, 5, 5, 100);
         robot.set_state(RobotState::MovingToResource);
         let behavior = HarvesterBehavior;
+        let map = Map::new_test_map(10, 10);
 
-        let action = behavior.decide_action(&robot);
+        let action = behavior.decide_action(&robot, &map);
 
         assert_eq!(action, RobotAction::CollectResource);
     }
@@ -175,8 +230,9 @@ mod tests {
     fn scientist_decides_to_move_when_idle() {
         let robot = Robot::new(3, RobotType::Scientist, 5, 5, 100);
         let behavior = ScientistBehavior;
+        let map = Map::new_test_map(10, 10);
 
-        let action = behavior.decide_action(&robot);
+        let action = behavior.decide_action(&robot, &map);
 
         assert_eq!(action, RobotAction::Move(Direction::East));
     }
@@ -205,17 +261,18 @@ mod tests {
         let explorer_robot = Robot::new(1, RobotType::Explorer, 0, 0, 100);
         let harvester_robot = Robot::new(2, RobotType::Harvester, 0, 0, 100);
         let scientist_robot = Robot::new(3, RobotType::Scientist, 0, 0, 100);
+        let map = Map::new_test_map(10, 10);
 
         assert_eq!(
-            explorer_behavior.decide_action(&explorer_robot),
+            explorer_behavior.decide_action(&explorer_robot, &map),
             RobotAction::Move(Direction::North)
         );
         assert_eq!(
-            harvester_behavior.decide_action(&harvester_robot),
+            harvester_behavior.decide_action(&harvester_robot, &map),
             RobotAction::Move(Direction::South)
         );
         assert_eq!(
-            scientist_behavior.decide_action(&scientist_robot),
+            scientist_behavior.decide_action(&scientist_robot, &map),
             RobotAction::Move(Direction::East)
         );
     }
