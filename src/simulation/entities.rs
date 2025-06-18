@@ -153,7 +153,7 @@ pub enum RobotType {
 }
 
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Robot {
     pub id: usize,
     pub robot_type: RobotType,
