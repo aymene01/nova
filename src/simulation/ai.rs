@@ -79,6 +79,46 @@ impl RobotBehavior for ScientistBehavior {
     }
 }
 
+/// Robot executor that applies AI decisions to robots
+pub struct RobotExecutor;
+
+impl RobotExecutor {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Execute an action on a robot, returning result
+    pub fn execute_action(&self, robot: &mut Robot, action: RobotAction) -> Result<(), String> {
+        match action {
+            RobotAction::Move(direction) => {
+                robot.move_in_direction(direction)
+                    .map_err(|e| format!("Movement failed: {}", e))
+            }
+            RobotAction::Idle => {
+                robot.set_state(RobotState::Idle);
+                Ok(())
+            }
+            RobotAction::CollectResource => {
+                robot.set_state(RobotState::Harvesting);
+                Ok(())
+            }
+            RobotAction::ReturnToStation => {
+                robot.set_state(RobotState::ReturningToStation);
+                Ok(())
+            }
+        }
+    }
+
+    /// Get the appropriate behavior for a robot type
+    pub fn get_behavior(&self, robot_type: &RobotType) -> Box<dyn RobotBehavior> {
+        match robot_type {
+            RobotType::Explorer => Box::new(ExplorerBehavior),
+            RobotType::Harvester => Box::new(HarvesterBehavior),
+            RobotType::Scientist => Box::new(ScientistBehavior),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,5 +174,35 @@ mod tests {
         let action = behavior.decide_action(&robot);
         
         assert_eq!(action, RobotAction::Move(Direction::East));
+    }
+
+    #[test]
+    fn robot_executor_can_execute_move_action() {
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 100);
+        let executor = RobotExecutor::new();
+        let action = RobotAction::Move(Direction::North);
+        
+        let result = executor.execute_action(&mut robot, action);
+        
+        assert!(result.is_ok());
+        assert_eq!(robot.position(), (5, 4));
+    }
+
+    #[test]
+    fn robot_executor_gets_correct_behavior() {
+        let executor = RobotExecutor::new();
+        
+        let explorer_behavior = executor.get_behavior(&RobotType::Explorer);
+        let harvester_behavior = executor.get_behavior(&RobotType::Harvester);
+        let scientist_behavior = executor.get_behavior(&RobotType::Scientist);
+        
+        // Test that each behavior type works correctly
+        let explorer_robot = Robot::new(1, RobotType::Explorer, 0, 0, 100);
+        let harvester_robot = Robot::new(2, RobotType::Harvester, 0, 0, 100);
+        let scientist_robot = Robot::new(3, RobotType::Scientist, 0, 0, 100);
+        
+        assert_eq!(explorer_behavior.decide_action(&explorer_robot), RobotAction::Move(Direction::North));
+        assert_eq!(harvester_behavior.decide_action(&harvester_robot), RobotAction::Move(Direction::South));
+        assert_eq!(scientist_behavior.decide_action(&scientist_robot), RobotAction::Move(Direction::East));
     }
 } 
