@@ -247,6 +247,16 @@ impl Robot {
             Err("No resource found at position")
         }
     }
+
+    pub fn deliver_resource(&mut self, station: &mut Station) -> Result<(), &'static str> {
+        if let Some((resource_type, amount)) = self.carrying.take() {
+            station.receive_resource(resource_type, amount);
+            self.set_state(RobotState::Idle);
+            Ok(())
+        } else {
+            Err("No resource to deliver")
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -256,6 +266,46 @@ pub struct Station {
     pub discoveries: u32,
     pub x: usize,
     pub y: usize,
+}
+
+impl Station {
+    pub fn new(x: usize, y: usize) -> Self {
+        Self {
+            resources: HashMap::new(),
+            discoveries: 0,
+            x,
+            y,
+        }
+    }
+
+    pub fn position(&self) -> (usize, usize) {
+        (self.x, self.y)
+    }
+
+    /// Accept a resource delivery from a robot
+    pub fn receive_resource(&mut self, resource_type: ResourceType, amount: u32) {
+        // Track discoveries for scientific interest before moving resource_type
+        if resource_type == ResourceType::ScientificInterest {
+            self.discoveries += 1;
+        }
+        
+        *self.resources.entry(resource_type).or_insert(0) += amount;
+    }
+
+    /// Get the current amount of a specific resource
+    pub fn get_resource_amount(&self, resource_type: &ResourceType) -> u32 {
+        self.resources.get(resource_type).copied().unwrap_or(0)
+    }
+
+    /// Get total resource count across all types
+    pub fn total_resources(&self) -> u32 {
+        self.resources.values().sum()
+    }
+
+    /// Check if robot is at station position
+    pub fn robot_at_station(&self, robot_position: (usize, usize)) -> bool {
+        self.position() == robot_position
+    }
 }
 
 #[cfg(test)]
@@ -379,5 +429,103 @@ mod tests {
         
         // Resource should be removed from map
         assert!(!map.resources.contains_key(&(3, 3)));
+    }
+
+    #[test]
+    fn robot_can_collect_and_remove_resource_from_map() {
+        let mut map = Map::new_test_map(5, 5);
+        map.resources.insert((2, 2), (ResourceType::Mineral, 30));
+        
+        let mut robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
+        
+        let result = robot.collect_resource(&mut map);
+        assert!(result.is_ok());
+        assert!(robot.carrying.is_some());
+        
+        let (resource_type, amount) = robot.carrying.unwrap();
+        assert_eq!(resource_type, ResourceType::Mineral);
+        assert_eq!(amount, 30);
+        
+        // Resource should be removed from map
+        assert!(!map.resources.contains_key(&(2, 2)));
+    }
+
+    #[test]
+    fn station_creation_works() {
+        let station = Station::new(5, 5);
+        
+        assert_eq!(station.position(), (5, 5));
+        assert_eq!(station.discoveries, 0);
+        assert_eq!(station.total_resources(), 0);
+    }
+    
+    #[test]
+    fn station_receives_energy_resource() {
+        let mut station = Station::new(0, 0);
+        
+        station.receive_resource(ResourceType::Energy, 50);
+        
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.total_resources(), 50);
+        assert_eq!(station.discoveries, 0); // Energy doesn't count as discovery
+    }
+    
+    #[test]
+    fn station_receives_scientific_interest_and_tracks_discoveries() {
+        let mut station = Station::new(0, 0);
+        
+        station.receive_resource(ResourceType::ScientificInterest, 100);
+        
+        assert_eq!(station.get_resource_amount(&ResourceType::ScientificInterest), 100);
+        assert_eq!(station.total_resources(), 100);
+        assert_eq!(station.discoveries, 1); // Should increment discoveries
+    }
+    
+    #[test]
+    fn station_accumulates_multiple_resources() {
+        let mut station = Station::new(0, 0);
+        
+        station.receive_resource(ResourceType::Energy, 30);
+        station.receive_resource(ResourceType::Energy, 20);
+        station.receive_resource(ResourceType::Mineral, 40);
+        
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Mineral), 40);
+        assert_eq!(station.total_resources(), 90);
+    }
+    
+    #[test]
+    fn robot_can_deliver_resource_to_station() {
+        let mut robot = Robot::new(1, RobotType::Harvester, 0, 0, 100);
+        robot.carrying = Some((ResourceType::Mineral, 25));
+        
+        let mut station = Station::new(0, 0);
+        
+        let result = robot.deliver_resource(&mut station);
+        
+        assert!(result.is_ok());
+        assert!(robot.carrying.is_none());
+        assert_eq!(robot.state(), RobotState::Idle);
+        assert_eq!(station.get_resource_amount(&ResourceType::Mineral), 25);
+    }
+    
+    #[test]
+    fn robot_cannot_deliver_when_not_carrying() {
+        let mut robot = Robot::new(1, RobotType::Harvester, 0, 0, 100);
+        let mut station = Station::new(0, 0);
+        
+        let result = robot.deliver_resource(&mut station);
+        
+        assert!(result.is_err());
+        assert_eq!(station.total_resources(), 0);
+    }
+    
+    #[test]
+    fn station_detects_robot_at_position() {
+        let station = Station::new(3, 4);
+        
+        assert!(station.robot_at_station((3, 4)));
+        assert!(!station.robot_at_station((3, 5)));
+        assert!(!station.robot_at_station((2, 4)));
     }
 }
