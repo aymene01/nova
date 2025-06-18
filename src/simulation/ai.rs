@@ -57,6 +57,28 @@ impl RobotBehavior for HarvesterBehavior {
     }
 }
 
+/// Scientist robot behavior - focuses on investigating scientific interest points
+pub struct ScientistBehavior;
+
+impl RobotBehavior for ScientistBehavior {
+    fn decide_action(&self, robot: &Robot) -> RobotAction {
+        match robot.state() {
+            RobotState::Idle => RobotAction::Move(Direction::East),
+            RobotState::Exploring => RobotAction::Move(Direction::West),
+            RobotState::MovingToResource => RobotAction::CollectResource,
+            _ => RobotAction::ReturnToStation,
+        }
+    }
+
+    fn can_execute(&self, robot: &Robot, action: &RobotAction) -> bool {
+        match action {
+            RobotAction::Move(_) => robot.energy() >= 10, // MOVE_ENERGY_COST
+            RobotAction::CollectResource => robot.carrying.is_none(),
+            _ => true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +124,15 @@ mod tests {
         let action = behavior.decide_action(&robot);
         
         assert_eq!(action, RobotAction::CollectResource);
+    }
+
+    #[test]
+    fn scientist_decides_to_move_when_idle() {
+        let robot = Robot::new(3, RobotType::Scientist, 5, 5, 100);
+        let behavior = ScientistBehavior;
+        
+        let action = behavior.decide_action(&robot);
+        
+        assert_eq!(action, RobotAction::Move(Direction::East));
     }
 } 
