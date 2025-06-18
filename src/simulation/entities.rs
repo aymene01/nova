@@ -15,6 +15,16 @@ pub enum Direction {
 /// Movement constants
 pub const MOVE_ENERGY_COST: u32 = 10;
 
+/// Robot states for behavior management
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RobotState {
+    Idle,
+    Exploring,
+    MovingToResource,
+    Harvesting,
+    ReturningToStation,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResourceType {
@@ -127,6 +137,7 @@ pub struct Robot {
     pub y: usize,
     pub energy: u32,
     pub carrying: Option<(ResourceType, u32)>,
+    pub state: RobotState,
 }
 
 #[allow(dead_code)]
@@ -139,6 +150,7 @@ impl Robot {
             y,
             energy,
             carrying: None,
+            state: RobotState::Idle,
         }
     }
 
@@ -152,6 +164,14 @@ impl Robot {
 
     pub fn robot_type(&self) -> RobotType {
         self.robot_type.clone()
+    }
+
+    pub fn state(&self) -> RobotState {
+        self.state.clone()
+    }
+
+    pub fn set_state(&mut self, new_state: RobotState) {
+        self.state = new_state;
     }
 
     pub fn move_in_direction(&mut self, direction: Direction) -> Result<(), &'static str> {
@@ -218,5 +238,18 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(robot.position(), (5, 5)); // Position unchanged
         assert_eq!(robot.energy(), 5); // Energy unchanged
+    }
+
+    #[test]
+    fn robot_state_management_works() {
+        let mut robot = Robot::new(1, RobotType::Explorer, 0, 0, 100);
+        
+        assert_eq!(robot.state(), RobotState::Idle);
+        
+        robot.set_state(RobotState::Exploring);
+        assert_eq!(robot.state(), RobotState::Exploring);
+        
+        robot.set_state(RobotState::ReturningToStation);
+        assert_eq!(robot.state(), RobotState::ReturningToStation);
     }
 }
