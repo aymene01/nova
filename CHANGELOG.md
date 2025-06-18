@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/aymene01/nova/compare/@nova-v0.3.0...@nova-v0.4.0) (2025-06-18)
+
+
+### Features
+
+* **simulation:** implement live robot movement with persistent TUI visualization ([#14](https://github.com/aymene01/nova/issues/14)) ([8792da2](https://github.com/aymene01/nova/commit/8792da2247b7a12ecc1252a68788c409f17ee353))
+
 ## [0.3.0](https://github.com/aymene01/nova/compare/@nova-v0.2.0...@nova-v0.3.0) (2025-06-18)
 
 
