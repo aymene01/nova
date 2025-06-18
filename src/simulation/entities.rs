@@ -14,7 +14,9 @@ pub enum Direction {
 
 /// Movement constants
 pub const MOVE_ENERGY_COST: u32 = 10;
+#[allow(dead_code)]
 pub const HARVEST_ENERGY_COST: u32 = 5;
+#[allow(dead_code)]
 pub const STARTING_ENERGY: u32 = 100;
 pub const LOW_ENERGY_THRESHOLD: u32 = 20;
 pub const RETURN_TO_STATION_THRESHOLD: u32 = 30; // When to head back to station
@@ -265,12 +267,12 @@ impl Robot {
         if self.carrying.is_some() {
             return true;
         }
-        
+
         // Return if energy is below threshold
         if self.energy <= RETURN_TO_STATION_THRESHOLD {
             return true;
         }
-        
+
         false
     }
 
@@ -288,8 +290,16 @@ impl Robot {
 
     /// Calculate Manhattan distance to a position
     pub fn manhattan_distance_to(&self, target: (usize, usize)) -> u32 {
-        let dx = if self.x > target.0 { self.x - target.0 } else { target.0 - self.x };
-        let dy = if self.y > target.1 { self.y - target.1 } else { target.1 - self.y };
+        let dx = if self.x > target.0 {
+            self.x - target.0
+        } else {
+            target.0 - self.x
+        };
+        let dy = if self.y > target.1 {
+            self.y - target.1
+        } else {
+            target.1 - self.y
+        };
         (dx + dy) as u32
     }
 
@@ -299,16 +309,16 @@ impl Robot {
         if self.carrying.is_some() {
             return false;
         }
-        
+
         // If can't safely return, must return now
         if !self.can_return_to_station(station_position) {
             return false;
         }
-        
+
         // If energy is getting low but still safe, consider returning
         let energy_to_return = self.energy_to_return(station_position);
         let safety_margin = 20; // Extra energy buffer
-        
+
         self.energy > energy_to_return + safety_margin
     }
 }
@@ -367,23 +377,25 @@ impl Station {
     /// Recharge a robot's energy if station has energy resources
     pub fn recharge_robot(&mut self, robot: &mut Robot) -> Result<u32, &'static str> {
         let energy_available = self.get_resource_amount(&ResourceType::Energy);
-        
+
         if energy_available == 0 {
             return Err("No energy available at station");
         }
-        
+
         let current_energy = robot.energy();
         if current_energy >= MAX_ROBOT_ENERGY {
             return Err("Robot already at full energy");
         }
-        
+
         let energy_needed = MAX_ROBOT_ENERGY - current_energy;
-        let recharge_amount = energy_needed.min(STATION_RECHARGE_RATE).min(energy_available);
-        
+        let recharge_amount = energy_needed
+            .min(STATION_RECHARGE_RATE)
+            .min(energy_available);
+
         // Use station's energy to recharge robot
         *self.resources.entry(ResourceType::Energy).or_insert(0) -= recharge_amount;
         robot.recharge(recharge_amount);
-        
+
         Ok(recharge_amount)
     }
 
@@ -621,83 +633,83 @@ mod tests {
     fn robot_should_return_when_carrying_resource() {
         let mut robot = Robot::new(1, RobotType::Harvester, 5, 5, 80);
         robot.carrying = Some((ResourceType::Energy, 50));
-        
+
         assert!(robot.should_return_to_station());
     }
-    
+
     #[test]
     fn robot_should_return_when_energy_low() {
         let robot = Robot::new(1, RobotType::Explorer, 5, 5, 25); // Below threshold
-        
+
         assert!(robot.should_return_to_station());
     }
-    
+
     #[test]
     fn robot_should_not_return_when_energy_sufficient() {
         let robot = Robot::new(1, RobotType::Explorer, 5, 5, 80); // Above threshold
-        
+
         assert!(!robot.should_return_to_station());
     }
-    
+
     #[test]
     fn robot_calculates_manhattan_distance_correctly() {
         let robot = Robot::new(1, RobotType::Explorer, 2, 3, 100);
-        
+
         assert_eq!(robot.manhattan_distance_to((2, 3)), 0); // Same position
         assert_eq!(robot.manhattan_distance_to((5, 3)), 3); // East
         assert_eq!(robot.manhattan_distance_to((2, 7)), 4); // South
         assert_eq!(robot.manhattan_distance_to((5, 7)), 7); // Diagonal
     }
-    
+
     #[test]
     fn robot_calculates_energy_to_return() {
         let robot = Robot::new(1, RobotType::Explorer, 2, 2, 100);
         let station_pos = (5, 6);
-        
+
         let expected_distance = 3 + 4; // Manhattan distance
         let expected_energy = expected_distance * MOVE_ENERGY_COST;
-        
+
         assert_eq!(robot.energy_to_return(station_pos), expected_energy);
     }
-    
+
     #[test]
     fn robot_can_return_with_sufficient_energy() {
         let robot = Robot::new(1, RobotType::Explorer, 0, 0, 100);
         let station_pos = (3, 3); // Distance 6, needs 60 energy
-        
+
         assert!(robot.can_return_to_station(station_pos));
     }
-    
+
     #[test]
     fn robot_cannot_return_with_insufficient_energy() {
         let robot = Robot::new(1, RobotType::Explorer, 0, 0, 30);
         let station_pos = (5, 5); // Distance 10, needs 100 energy
-        
+
         assert!(!robot.can_return_to_station(station_pos));
     }
-    
+
     #[test]
     fn robot_should_continue_mission_when_safe() {
         let robot = Robot::new(1, RobotType::Explorer, 1, 1, 100);
         let station_pos = (2, 2); // Close station, low energy requirement
-        
+
         assert!(robot.should_continue_mission(station_pos));
     }
-    
+
     #[test]
     fn robot_should_not_continue_when_carrying() {
         let mut robot = Robot::new(1, RobotType::Harvester, 1, 1, 100);
         robot.carrying = Some((ResourceType::Mineral, 50));
         let station_pos = (2, 2);
-        
+
         assert!(!robot.should_continue_mission(station_pos));
     }
-    
+
     #[test]
     fn robot_should_not_continue_when_energy_insufficient() {
         let robot = Robot::new(1, RobotType::Explorer, 0, 0, 40);
         let station_pos = (5, 5); // Far station, high energy requirement
-        
+
         assert!(!robot.should_continue_mission(station_pos));
     }
 
@@ -705,83 +717,83 @@ mod tests {
     fn station_recharges_robot_successfully() {
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 100);
-        
+
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30); // Low energy
-        
+
         let result = station.recharge_robot(&mut robot);
-        
+
         assert!(result.is_ok());
         let recharged = result.unwrap();
         assert_eq!(recharged, 50); // STATION_RECHARGE_RATE
         assert_eq!(robot.energy(), 80); // 30 + 50
         assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50); // 100 - 50
     }
-    
+
     #[test]
     fn station_cannot_recharge_without_energy() {
         let mut station = Station::new(5, 5);
         // No energy in station
-        
+
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
-        
+
         let result = station.recharge_robot(&mut robot);
-        
+
         assert!(result.is_err());
         assert_eq!(robot.energy(), 30); // Unchanged
     }
-    
+
     #[test]
     fn station_cannot_recharge_full_energy_robot() {
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 100);
-        
+
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, MAX_ROBOT_ENERGY);
-        
+
         let result = station.recharge_robot(&mut robot);
-        
+
         assert!(result.is_err());
         assert_eq!(robot.energy(), MAX_ROBOT_ENERGY);
         assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100); // Unchanged
     }
-    
+
     #[test]
     fn station_recharges_partial_when_limited_energy() {
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 20); // Limited energy
-        
+
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
-        
+
         let result = station.recharge_robot(&mut robot);
-        
+
         assert!(result.is_ok());
         let recharged = result.unwrap();
         assert_eq!(recharged, 20); // Limited by station energy
         assert_eq!(robot.energy(), 50); // 30 + 20
         assert_eq!(station.get_resource_amount(&ResourceType::Energy), 0); // All used
     }
-    
+
     #[test]
     fn station_recharges_partial_when_near_full() {
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 100);
-        
+
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 90); // Near full
-        
+
         let result = station.recharge_robot(&mut robot);
-        
+
         assert!(result.is_ok());
         let recharged = result.unwrap();
         assert_eq!(recharged, 10); // Only what's needed to fill up
         assert_eq!(robot.energy(), MAX_ROBOT_ENERGY);
         assert_eq!(station.get_resource_amount(&ResourceType::Energy), 90); // 100 - 10
     }
-    
+
     #[test]
     fn station_can_recharge_check_works() {
         let mut station = Station::new(5, 5);
-        
+
         assert!(!station.can_recharge()); // No energy
-        
+
         station.receive_resource(ResourceType::Energy, 50);
         assert!(station.can_recharge()); // Has energy
     }

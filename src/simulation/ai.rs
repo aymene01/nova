@@ -1,5 +1,5 @@
 use crate::simulation::entities::{
-    Direction, Map, ResourceType, Robot, RobotState, RobotType, Station, MAX_ROBOT_ENERGY,
+    Direction, MAX_ROBOT_ENERGY, Map, ResourceType, Robot, RobotState, RobotType, Station,
 };
 use crate::simulation::pathfinding::Pathfinder;
 
@@ -51,7 +51,7 @@ impl RobotBehavior for ExplorerBehavior {
                 if robot.should_return_to_station() {
                     return RobotAction::ReturnToStation;
                 }
-                
+
                 // Find nearest unexplored area
                 if let Some(unexplored_pos) = Self::find_nearest_unexplored(robot.position(), map) {
                     if let Some(direction) =
@@ -89,7 +89,7 @@ impl RobotBehavior for ExplorerBehavior {
                 if !robot.should_continue_mission(station.position()) {
                     return RobotAction::ReturnToStation;
                 }
-                
+
                 // Continue with normal exploration behavior
                 self.decide_action(robot, map)
             }
@@ -157,7 +157,7 @@ impl RobotBehavior for HarvesterBehavior {
                 if robot.should_return_to_station() {
                     return RobotAction::ReturnToStation;
                 }
-                
+
                 // Look for nearest resource
                 if let Some(resource_pos) = Self::find_nearest_resource(robot.position(), map) {
                     if let Some(direction) =
@@ -212,7 +212,7 @@ impl RobotBehavior for HarvesterBehavior {
                 if !robot.should_continue_mission(station.position()) {
                     return RobotAction::ReturnToStation;
                 }
-                
+
                 // Continue with normal harvesting behavior
                 self.decide_action(robot, map)
             }
@@ -267,7 +267,7 @@ impl RobotBehavior for ScientistBehavior {
                 if robot.should_return_to_station() {
                     return RobotAction::ReturnToStation;
                 }
-                
+
                 // Look for nearest scientific interest point
                 if let Some(science_pos) = Self::find_nearest_science_point(robot.position(), map) {
                     if let Some(direction) =
@@ -326,7 +326,7 @@ impl RobotBehavior for ScientistBehavior {
                 if !robot.should_continue_mission(station.position()) {
                     return RobotAction::ReturnToStation;
                 }
-                
+
                 // Continue with normal scientific behavior
                 self.decide_action(robot, map)
             }
@@ -419,19 +419,23 @@ impl RobotExecutor {
                             .deliver_resource(station)
                             .map_err(|e| format!("Delivery failed: {}", e))?;
                     }
-                    
+
                     // Then recharge if needed and possible
                     if robot.energy() < MAX_ROBOT_ENERGY && station.can_recharge() {
                         match station.recharge_robot(robot) {
                             Ok(recharged) => {
-                                log::info!("Robot {} recharged {} energy at station", robot.id, recharged);
+                                log::info!(
+                                    "Robot {} recharged {} energy at station",
+                                    robot.id,
+                                    recharged
+                                );
                             }
                             Err(_) => {
                                 // Recharging failed, but that's ok
                             }
                         }
                     }
-                    
+
                     // Robot is now ready for next mission
                     robot.set_state(RobotState::Idle);
                     return Ok(());
@@ -730,64 +734,65 @@ mod tests {
     fn explorer_returns_when_energy_low() {
         let map = Map::new_test_map(10, 10);
         let station = Station::new(5, 5);
-        
+
         let robot = Robot::new(1, RobotType::Explorer, 2, 2, 25); // Low energy
         let behavior = ExplorerBehavior;
-        
+
         let action = behavior.decide_action_with_station(&robot, &map, &station);
         assert_eq!(action, RobotAction::ReturnToStation);
     }
-    
+
     #[test]
     fn harvester_returns_when_carrying_resource() {
         let map = Map::new_test_map(10, 10);
-        let station = Station::new(5, 5);
-        
+        let _station = Station::new(5, 5);
+
         let mut robot = Robot::new(1, RobotType::Harvester, 2, 2, 80);
         robot.carrying = Some((ResourceType::Energy, 50));
         let behavior = HarvesterBehavior;
-        
+
         let action = behavior.decide_action(&robot, &map);
         assert_eq!(action, RobotAction::ReturnToStation);
     }
-    
+
     #[test]
     fn scientist_continues_when_energy_sufficient() {
         let mut map = Map::new_test_map(10, 10);
-        map.resources.insert((7, 7), (ResourceType::ScientificInterest, 100));
+        map.resources
+            .insert((7, 7), (ResourceType::ScientificInterest, 100));
         let station = Station::new(5, 5);
-        
+
         let robot = Robot::new(1, RobotType::Scientist, 2, 2, 90); // Good energy
         let behavior = ScientistBehavior;
-        
+
         let action = behavior.decide_action_with_station(&robot, &map, &station);
         // Should continue exploring, not return
         assert!(matches!(action, RobotAction::Move(_)));
     }
-    
+
     #[test]
     fn robot_makes_intelligent_energy_decisions() {
         let map = Map::new_test_map(10, 10);
         let station = Station::new(9, 9); // Far station
-        
+
         // Robot with just enough energy to return safely
         let robot = Robot::new(1, RobotType::Explorer, 0, 0, 45);
         let behavior = ExplorerBehavior;
-        
+
         let action = behavior.decide_action_with_station(&robot, &map, &station);
         // Should return to station due to energy concerns
         assert_eq!(action, RobotAction::ReturnToStation);
     }
-    
+
     #[test]
     fn robot_continues_mission_when_safe() {
         let map = Map::new_test_map(10, 10);
         let station = Station::new(2, 2); // Close station
-        
+
         // Robot with plenty of energy for a close station
         let robot = Robot::new(1, RobotType::Explorer, 1, 1, 90);
         let behavior = ExplorerBehavior;
-        
+
         let action = behavior.decide_action_with_station(&robot, &map, &station);
         // Should continue exploring
         assert!(matches!(action, RobotAction::Move(_)));
@@ -798,32 +803,32 @@ mod tests {
         let map = Map::new_test_map(10, 10);
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 100); // Station has energy
-        
+
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30); // Low energy robot
         robot.set_state(RobotState::ReturningToStation);
-        
+
         let executor = RobotExecutor::new();
         let result = executor.execute_action_with_station(&mut robot, &map, &mut station);
-        
+
         assert!(result.is_ok());
         assert_eq!(robot.state(), RobotState::Idle); // Ready for next mission
         assert_eq!(robot.energy(), 80); // 30 + 50 (recharged)
         assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50); // 100 - 50
     }
-    
+
     #[test]
     fn robot_executor_handles_delivery_and_recharging() {
         let map = Map::new_test_map(10, 10);
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 100);
-        
+
         let mut robot = Robot::new(1, RobotType::Harvester, 5, 5, 40);
         robot.set_state(RobotState::ReturningToStation);
         robot.carrying = Some((ResourceType::Mineral, 25)); // Carrying resource
-        
+
         let executor = RobotExecutor::new();
         let result = executor.execute_action_with_station(&mut robot, &map, &mut station);
-        
+
         assert!(result.is_ok());
         assert_eq!(robot.state(), RobotState::Idle);
         assert!(robot.carrying.is_none()); // Resource delivered
