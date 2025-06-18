@@ -1,4 +1,6 @@
-use crate::simulation::entities::{Direction, Robot, RobotState, RobotType, Map, ResourceType, Station};
+use crate::simulation::entities::{
+    Direction, Map, ResourceType, Robot, RobotState, RobotType, Station,
+};
 use crate::simulation::pathfinding::Pathfinder;
 
 /// Action that a robot can perform
@@ -13,15 +15,18 @@ pub enum RobotAction {
 /// Defines the behavior interface for robot types
 pub trait RobotBehavior {
     fn decide_action(&self, robot: &Robot, map: &Map) -> RobotAction;
-    fn decide_action_with_station(&self, robot: &Robot, map: &Map, station: &Station) -> RobotAction {
+    fn decide_action_with_station(
+        &self,
+        robot: &Robot,
+        map: &Map,
+        station: &Station,
+    ) -> RobotAction {
         match robot.state() {
             RobotState::ReturningToStation => {
                 // Navigate to station intelligently
-                if let Some(direction) = Pathfinder::get_direction_to_goal(
-                    robot.position(),
-                    station.position(),
-                    map,
-                ) {
+                if let Some(direction) =
+                    Pathfinder::get_direction_to_goal(robot.position(), station.position(), map)
+                {
                     RobotAction::Move(direction)
                 } else {
                     RobotAction::Idle
@@ -30,6 +35,7 @@ pub trait RobotBehavior {
             _ => self.decide_action(robot, map),
         }
     }
+    #[allow(dead_code)]
     fn can_execute(&self, robot: &Robot, action: &RobotAction) -> bool;
 }
 
@@ -43,11 +49,9 @@ impl RobotBehavior for ExplorerBehavior {
             RobotState::Idle | RobotState::Exploring => {
                 // Find nearest unexplored area
                 if let Some(unexplored_pos) = Self::find_nearest_unexplored(robot.position(), map) {
-                    if let Some(direction) = Pathfinder::get_direction_to_goal(
-                        robot.position(),
-                        unexplored_pos,
-                        map,
-                    ) {
+                    if let Some(direction) =
+                        Pathfinder::get_direction_to_goal(robot.position(), unexplored_pos, map)
+                    {
                         return RobotAction::Move(direction);
                     }
                 }
@@ -115,11 +119,9 @@ impl RobotBehavior for HarvesterBehavior {
             RobotState::Idle => {
                 // Look for nearest resource
                 if let Some(resource_pos) = Self::find_nearest_resource(robot.position(), map) {
-                    if let Some(direction) = Pathfinder::get_direction_to_goal(
-                        robot.position(),
-                        resource_pos,
-                        map,
-                    ) {
+                    if let Some(direction) =
+                        Pathfinder::get_direction_to_goal(robot.position(), resource_pos, map)
+                    {
                         return RobotAction::Move(direction);
                     }
                 }
@@ -133,11 +135,9 @@ impl RobotBehavior for HarvesterBehavior {
                 } else {
                     // Continue moving towards nearest resource
                     if let Some(resource_pos) = Self::find_nearest_resource(robot.position(), map) {
-                        if let Some(direction) = Pathfinder::get_direction_to_goal(
-                            robot.position(),
-                            resource_pos,
-                            map,
-                        ) {
+                        if let Some(direction) =
+                            Pathfinder::get_direction_to_goal(robot.position(), resource_pos, map)
+                        {
                             return RobotAction::Move(direction);
                         }
                     }
@@ -166,7 +166,11 @@ impl HarvesterBehavior {
 
         for (pos, (resource_type, _amount)) in &map.resources {
             // Harvesters care about Energy and Minerals
-            if matches!(resource_type, crate::simulation::entities::ResourceType::Energy | crate::simulation::entities::ResourceType::Mineral) {
+            if matches!(
+                resource_type,
+                crate::simulation::entities::ResourceType::Energy
+                    | crate::simulation::entities::ResourceType::Mineral
+            ) {
                 let distance = Pathfinder::manhattan_distance(from, *pos);
                 if distance < min_distance {
                     min_distance = distance;
@@ -189,11 +193,9 @@ impl RobotBehavior for ScientistBehavior {
             RobotState::Idle => {
                 // Look for nearest scientific interest point
                 if let Some(science_pos) = Self::find_nearest_science_point(robot.position(), map) {
-                    if let Some(direction) = Pathfinder::get_direction_to_goal(
-                        robot.position(),
-                        science_pos,
-                        map,
-                    ) {
+                    if let Some(direction) =
+                        Pathfinder::get_direction_to_goal(robot.position(), science_pos, map)
+                    {
                         return RobotAction::Move(direction);
                     }
                 }
@@ -202,16 +204,18 @@ impl RobotBehavior for ScientistBehavior {
             }
             RobotState::MovingToResource => {
                 // Check if we're at a scientific interest point
-                if let Some((ResourceType::ScientificInterest, _)) = robot.detect_resource_at_position(map) {
+                if let Some((ResourceType::ScientificInterest, _)) =
+                    robot.detect_resource_at_position(map)
+                {
                     RobotAction::CollectResource
                 } else {
                     // Continue moving towards nearest scientific interest
-                    if let Some(science_pos) = Self::find_nearest_science_point(robot.position(), map) {
-                        if let Some(direction) = Pathfinder::get_direction_to_goal(
-                            robot.position(),
-                            science_pos,
-                            map,
-                        ) {
+                    if let Some(science_pos) =
+                        Self::find_nearest_science_point(robot.position(), map)
+                    {
+                        if let Some(direction) =
+                            Pathfinder::get_direction_to_goal(robot.position(), science_pos, map)
+                        {
                             return RobotAction::Move(direction);
                         }
                     }
@@ -240,7 +244,10 @@ impl ScientistBehavior {
 
         for (pos, (resource_type, _amount)) in &map.resources {
             // Scientists care about Scientific Interest Points
-            if matches!(resource_type, crate::simulation::entities::ResourceType::ScientificInterest) {
+            if matches!(
+                resource_type,
+                crate::simulation::entities::ResourceType::ScientificInterest
+            ) {
                 let distance = Pathfinder::manhattan_distance(from, *pos);
                 if distance < min_distance {
                     min_distance = distance;
@@ -322,7 +329,7 @@ impl RobotExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::entities::{Map, Robot, RobotType, ResourceType};
+    use crate::simulation::entities::{Map, ResourceType, Robot, RobotType};
 
     #[test]
     fn explorer_decides_to_move_when_idle() {
@@ -428,49 +435,50 @@ mod tests {
         // Place minerals at different distances
         map.resources.insert((8, 8), (ResourceType::Mineral, 50));
         map.resources.insert((3, 3), (ResourceType::Mineral, 30));
-        
+
         let robot = Robot::new(1, RobotType::Harvester, 1, 1, 100);
-        
+
         // Should find the closer mineral at (3, 3)
         let closest = HarvesterBehavior::find_nearest_resource(robot.position(), &map);
         assert_eq!(closest, Some((3, 3)));
     }
-    
+
     #[test]
     fn harvester_moves_towards_resource() {
         let mut map = Map::new_test_map(10, 10);
         map.resources.insert((5, 5), (ResourceType::Energy, 50));
-        
+
         let robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
         let behavior = HarvesterBehavior;
-        
+
         let action = behavior.decide_action(&robot, &map);
         // Should attempt to move towards the resource
         assert!(matches!(action, RobotAction::Move(_)));
     }
-    
+
     #[test]
     fn harvester_ignores_scientific_interest() {
         let mut map = Map::new_test_map(10, 10);
-        map.resources.insert((3, 3), (ResourceType::ScientificInterest, 100));
+        map.resources
+            .insert((3, 3), (ResourceType::ScientificInterest, 100));
         map.resources.insert((8, 8), (ResourceType::Energy, 20));
-        
+
         let robot = Robot::new(1, RobotType::Harvester, 1, 1, 100);
-        
+
         // Should find energy resource, not scientific interest
         let closest = HarvesterBehavior::find_nearest_resource(robot.position(), &map);
         assert_eq!(closest, Some((8, 8)));
     }
-    
+
     #[test]
     fn harvester_collects_when_at_resource() {
         let mut map = Map::new_test_map(10, 10);
         map.resources.insert((5, 5), (ResourceType::Mineral, 50));
-        
+
         let mut robot = Robot::new(1, RobotType::Harvester, 5, 5, 100);
         robot.set_state(RobotState::MovingToResource);
         let behavior = HarvesterBehavior;
-        
+
         let action = behavior.decide_action(&robot, &map);
         assert_eq!(action, RobotAction::CollectResource);
     }
@@ -479,52 +487,57 @@ mod tests {
     fn scientist_finds_nearest_interest_point() {
         let mut map = Map::new_test_map(10, 10);
         // Place science points at different distances
-        map.resources.insert((8, 8), (ResourceType::ScientificInterest, 100));
-        map.resources.insert((3, 3), (ResourceType::ScientificInterest, 80));
-        
+        map.resources
+            .insert((8, 8), (ResourceType::ScientificInterest, 100));
+        map.resources
+            .insert((3, 3), (ResourceType::ScientificInterest, 80));
+
         let robot = Robot::new(1, RobotType::Scientist, 1, 1, 100);
-        
+
         // Should find the closer science point at (3, 3)
         let closest = ScientistBehavior::find_nearest_science_point(robot.position(), &map);
         assert_eq!(closest, Some((3, 3)));
     }
-    
+
     #[test]
     fn scientist_moves_towards_science_point() {
         let mut map = Map::new_test_map(10, 10);
-        map.resources.insert((5, 5), (ResourceType::ScientificInterest, 100));
-        
+        map.resources
+            .insert((5, 5), (ResourceType::ScientificInterest, 100));
+
         let robot = Robot::new(1, RobotType::Scientist, 2, 2, 100);
         let behavior = ScientistBehavior;
-        
+
         let action = behavior.decide_action(&robot, &map);
         // Should attempt to move towards the science point
         assert!(matches!(action, RobotAction::Move(_)));
     }
-    
+
     #[test]
     fn scientist_ignores_energy_and_minerals() {
         let mut map = Map::new_test_map(10, 10);
         map.resources.insert((3, 3), (ResourceType::Energy, 50));
         map.resources.insert((4, 4), (ResourceType::Mineral, 30));
-        map.resources.insert((8, 8), (ResourceType::ScientificInterest, 100));
-        
+        map.resources
+            .insert((8, 8), (ResourceType::ScientificInterest, 100));
+
         let robot = Robot::new(1, RobotType::Scientist, 1, 1, 100);
-        
+
         // Should find scientific interest, not energy or minerals
         let closest = ScientistBehavior::find_nearest_science_point(robot.position(), &map);
         assert_eq!(closest, Some((8, 8)));
     }
-    
+
     #[test]
     fn scientist_collects_when_at_science_point() {
         let mut map = Map::new_test_map(10, 10);
-        map.resources.insert((5, 5), (ResourceType::ScientificInterest, 100));
-        
+        map.resources
+            .insert((5, 5), (ResourceType::ScientificInterest, 100));
+
         let mut robot = Robot::new(1, RobotType::Scientist, 5, 5, 100);
         robot.set_state(RobotState::MovingToResource);
         let behavior = ScientistBehavior;
-        
+
         let action = behavior.decide_action(&robot, &map);
         assert_eq!(action, RobotAction::CollectResource);
     }
@@ -533,47 +546,47 @@ mod tests {
     fn robot_navigates_to_station_when_returning() {
         let map = Map::new_test_map(10, 10);
         let station = Station::new(8, 8);
-        
+
         let mut robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
         robot.set_state(RobotState::ReturningToStation);
         robot.carrying = Some((ResourceType::Energy, 50));
-        
+
         let behavior = HarvesterBehavior;
         let action = behavior.decide_action_with_station(&robot, &map, &station);
-        
+
         // Should attempt to move towards station
         assert!(matches!(action, RobotAction::Move(_)));
     }
-    
+
     #[test]
     fn robot_executor_handles_station_delivery() {
         let map = Map::new_test_map(10, 10);
         let mut station = Station::new(5, 5);
-        
+
         let mut robot = Robot::new(1, RobotType::Harvester, 5, 5, 100);
         robot.set_state(RobotState::ReturningToStation);
         robot.carrying = Some((ResourceType::Mineral, 30));
-        
+
         let executor = RobotExecutor::new();
         let result = executor.execute_action_with_station(&mut robot, &map, &mut station);
-        
+
         assert!(result.is_ok());
         assert!(robot.carrying.is_none());
         assert_eq!(robot.state(), RobotState::Idle);
         assert_eq!(station.get_resource_amount(&ResourceType::Mineral), 30);
     }
-    
+
     #[test]
     fn robot_continues_navigation_when_not_at_station() {
         let map = Map::new_test_map(10, 10);
         let mut station = Station::new(8, 8);
-        
+
         let mut robot = Robot::new(1, RobotType::Explorer, 2, 2, 100);
         robot.set_state(RobotState::ReturningToStation);
-        
+
         let executor = RobotExecutor::new();
         let result = executor.execute_action_with_station(&mut robot, &map, &mut station);
-        
+
         assert!(result.is_ok());
         assert_eq!(robot.state(), RobotState::ReturningToStation);
         // Robot should have moved closer to station

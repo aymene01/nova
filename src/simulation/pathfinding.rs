@@ -71,12 +71,13 @@ impl Pathfinder {
                     continue;
                 }
 
-                let tentative_g_score = g_score[&current.position] + Self::movement_cost(neighbor, map);
+                let tentative_g_score =
+                    g_score[&current.position] + Self::movement_cost(neighbor, map);
 
                 if !g_score.contains_key(&neighbor) || tentative_g_score < g_score[&neighbor] {
                     came_from.insert(neighbor, current.position);
                     g_score.insert(neighbor, tentative_g_score);
-                    
+
                     open_set.push(PathNode {
                         position: neighbor,
                         cost: tentative_g_score,
@@ -126,12 +127,12 @@ impl Pathfinder {
         mut current: (usize, usize),
     ) -> Vec<(usize, usize)> {
         let mut path = vec![current];
-        
+
         while let Some(&prev) = came_from.get(&current) {
             current = prev;
             path.push(current);
         }
-        
+
         path.reverse();
         path
     }
@@ -182,9 +183,9 @@ mod tests {
     #[test]
     fn pathfinding_finds_simple_path() {
         let map = Map::new_test_map(5, 5);
-        
+
         let path = Pathfinder::find_path((0, 0), (2, 2), &map);
-        
+
         assert!(path.is_some());
         let path = path.unwrap();
         assert_eq!(path.first(), Some(&(0, 0)));
@@ -196,9 +197,9 @@ mod tests {
     fn pathfinding_returns_none_for_impossible_path() {
         // This test would need a map with obstacles, but for now we test the basic structure
         let map = Map::new_test_map(3, 3);
-        
+
         let path = Pathfinder::find_path((0, 0), (10, 10), &map);
-        
+
         // Should return None for out-of-bounds destination
         assert!(path.is_none());
     }
@@ -206,11 +207,11 @@ mod tests {
     #[test]
     fn direction_calculation_works() {
         let map = Map::new_test_map(5, 5);
-        
+
         let direction = Pathfinder::get_direction_to_goal((1, 1), (1, 0), &map);
         assert_eq!(direction, Some(Direction::North));
-        
+
         let direction = Pathfinder::get_direction_to_goal((1, 1), (2, 1), &map);
         assert_eq!(direction, Some(Direction::East));
     }
-} 
+}
