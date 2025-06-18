@@ -13,7 +13,7 @@ pub enum Direction {
 }
 
 /// Movement constants
-pub const MOVE_ENERGY_COST: u32 = 10;
+pub const MOVE_ENERGY_COST: u32 = 3;
 #[allow(dead_code)]
 pub const HARVEST_ENERGY_COST: u32 = 5;
 #[allow(dead_code)]
@@ -898,13 +898,13 @@ mod tests {
 
     #[test]
     fn robot_move_fails_with_insufficient_energy() {
-        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 5); // Only 5 energy
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 2); // Only 2 energy (less than MOVE_ENERGY_COST=3)
 
         let result = robot.move_in_direction(Direction::North);
 
         assert!(result.is_err());
         assert_eq!(robot.position(), (5, 5)); // Position unchanged
-        assert_eq!(robot.energy(), 5); // Energy unchanged
+        assert_eq!(robot.energy(), 2); // Energy unchanged
     }
 
     #[test]
@@ -1147,8 +1147,8 @@ mod tests {
 
     #[test]
     fn robot_cannot_return_with_insufficient_energy() {
-        let robot = Robot::new(1, RobotType::Explorer, 0, 0, 30);
-        let station_pos = (5, 5); // Distance 10, needs 100 energy
+        let robot = Robot::new(1, RobotType::Explorer, 0, 0, 20); // Reduced from 30 to 20
+        let station_pos = (5, 5); // Distance 10, needs 30 energy (10 moves × 3 energy each)
 
         assert!(!robot.can_return_to_station(station_pos));
     }

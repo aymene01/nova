@@ -17,6 +17,7 @@ pub enum SimulationCommand {
     Shutdown,
     GetStatus,
     GetDetailedMetrics,
+    GetRobots,
     SetTickRate(u64), // milliseconds per tick
 }
 
@@ -83,6 +84,7 @@ pub struct SimulationEngine {
     executor: Arc<RobotExecutor>,
     command_rx: mpsc::Receiver<SimulationCommand>,
     status_tx: mpsc::Sender<SimulationStatus>,
+    robots_tx: mpsc::Sender<Vec<Robot>>,
     is_running: Arc<Mutex<bool>>,
     tick_count: Arc<Mutex<u64>>,
     start_time: std::time::Instant,
@@ -100,9 +102,11 @@ impl SimulationEngine {
         Self,
         mpsc::Sender<SimulationCommand>,
         mpsc::Receiver<SimulationStatus>,
+        mpsc::Receiver<Vec<Robot>>,
     ) {
         let (command_tx, command_rx) = mpsc::channel(100);
         let (status_tx, status_rx) = mpsc::channel(10);
+        let (robots_tx, robots_rx) = mpsc::channel(10);
 
         let engine = Self {
             map: Arc::new(RwLock::new(map)),
@@ -111,13 +115,14 @@ impl SimulationEngine {
             executor: Arc::new(RobotExecutor::new()),
             command_rx,
             status_tx,
+            robots_tx,
             is_running: Arc::new(Mutex::new(false)),
             tick_count: Arc::new(Mutex::new(0)),
             start_time: std::time::Instant::now(),
             last_metrics: Arc::new(Mutex::new(None)),
         };
 
-        (engine, command_tx, status_rx)
+        (engine, command_tx, status_rx, robots_rx)
     }
 
     /// Start the simulation engine
@@ -161,6 +166,10 @@ impl SimulationEngine {
                         SimulationCommand::GetDetailedMetrics => {
                             let metrics = self.get_detailed_metrics().await;
                             let _ = self.status_tx.send(metrics.status).await;
+                        }
+                        SimulationCommand::GetRobots => {
+                            let robots = self.robots.lock().await.clone();
+                            let _ = self.robots_tx.send(robots).await;
                         }
                         SimulationCommand::SetTickRate(rate) => {
                             tick_interval = time::interval(Duration::from_millis(rate));
@@ -418,6 +427,7 @@ pub async fn create_basic_simulation(
     SimulationEngine,
     mpsc::Sender<SimulationCommand>,
     mpsc::Receiver<SimulationStatus>,
+    mpsc::Receiver<Vec<Robot>>,
 ) {
     use crate::simulation::entities::Map;
 
@@ -432,13 +442,19 @@ pub async fn create_basic_simulation(
             _ => RobotType::Scientist,
         };
 
-        let robot = Robot::new(
-            i,
-            robot_type,
-            station.position().0,
-            station.position().1,
-            100,
-        );
+        // Start robots in a circle around the station
+        let station_pos = station.position();
+        let angle = (i as f64) * 2.0 * std::f64::consts::PI / (num_robots as f64);
+        let radius = 2.0; // Start robots 2 tiles away from station
+
+        let robot_x = (station_pos.0 as f64 + radius * angle.cos()).round() as usize;
+        let robot_y = (station_pos.1 as f64 + radius * angle.sin()).round() as usize;
+
+        // Ensure robot position is within map bounds
+        let robot_x = robot_x.min(map_width - 1);
+        let robot_y = robot_y.min(map_height - 1);
+
+        let robot = Robot::new(i, robot_type, robot_x, robot_y, 100);
         robots.push(robot);
     }
 
@@ -452,7 +468,8 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_engine_starts_and_stops() {
-        let (mut engine, command_tx, _status_rx) = create_basic_simulation(10, 10, 42, 3).await;
+        let (mut engine, command_tx, _status_rx, _robots_rx) =
+            create_basic_simulation(10, 10, 42, 3).await;
 
         // Start engine in background
         let engine_handle = tokio::spawn(async move { engine.run().await });
@@ -467,7 +484,8 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_processes_status_requests() {
-        let (mut engine, command_tx, mut status_rx) = create_basic_simulation(10, 10, 42, 3).await;
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
+            create_basic_simulation(10, 10, 42, 3).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
 
@@ -488,7 +506,8 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_can_pause_and_resume() {
-        let (mut engine, command_tx, mut status_rx) = create_basic_simulation(10, 10, 42, 3).await;
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
+            create_basic_simulation(10, 10, 42, 3).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
 
@@ -515,7 +534,7 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_processes_robots_concurrently() {
-        let (mut engine, command_tx, mut status_rx) =
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
             create_basic_simulation(20, 20, 123, 12).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
@@ -537,7 +556,8 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_handles_robot_addition_and_removal() {
-        let (mut engine, command_tx, mut status_rx) = create_basic_simulation(10, 10, 42, 2).await;
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
+            create_basic_simulation(10, 10, 42, 2).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
 
@@ -576,7 +596,7 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_handles_concurrent_load() {
-        let (mut engine, command_tx, mut status_rx) =
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
             create_basic_simulation(30, 30, 456, 20).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
@@ -609,7 +629,7 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_maintains_performance_under_load() {
-        let (mut engine, command_tx, mut status_rx) =
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
             create_basic_simulation(50, 50, 789, 50).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
@@ -639,7 +659,8 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_provides_detailed_metrics() {
-        let (mut engine, command_tx, mut status_rx) = create_basic_simulation(15, 15, 999, 6).await;
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
+            create_basic_simulation(15, 15, 999, 6).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
 
@@ -664,7 +685,8 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_handles_dynamic_tick_rate() {
-        let (mut engine, command_tx, mut status_rx) = create_basic_simulation(10, 10, 42, 3).await;
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
+            create_basic_simulation(10, 10, 42, 3).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
 
@@ -706,7 +728,7 @@ mod tests {
 
     #[tokio::test]
     async fn simulation_tracks_performance_metrics() {
-        let (mut engine, command_tx, mut status_rx) =
+        let (mut engine, command_tx, mut status_rx, _robots_rx) =
             create_basic_simulation(20, 20, 456, 10).await;
 
         let engine_handle = tokio::spawn(async move { engine.run().await });
