@@ -10,12 +10,14 @@ pub enum RobotAction {
 }
 
 /// Trait for robot AI behavior
+#[allow(dead_code)]
 pub trait RobotBehavior {
     fn decide_action(&self, robot: &Robot) -> RobotAction;
     fn can_execute(&self, robot: &Robot, action: &RobotAction) -> bool;
 }
 
 /// Explorer robot behavior - focuses on mapping unknown areas
+#[allow(dead_code)]
 pub struct ExplorerBehavior;
 
 impl RobotBehavior for ExplorerBehavior {
@@ -36,6 +38,7 @@ impl RobotBehavior for ExplorerBehavior {
 }
 
 /// Harvester robot behavior - focuses on collecting energy and minerals
+#[allow(dead_code)]
 pub struct HarvesterBehavior;
 
 impl RobotBehavior for HarvesterBehavior {
@@ -58,6 +61,7 @@ impl RobotBehavior for HarvesterBehavior {
 }
 
 /// Scientist robot behavior - focuses on investigating scientific interest points
+#[allow(dead_code)]
 pub struct ScientistBehavior;
 
 impl RobotBehavior for ScientistBehavior {
@@ -80,8 +84,10 @@ impl RobotBehavior for ScientistBehavior {
 }
 
 /// Robot executor that applies AI decisions to robots
+#[allow(dead_code)]
 pub struct RobotExecutor;
 
+#[allow(dead_code)]
 impl RobotExecutor {
     pub fn new() -> Self {
         Self
@@ -90,10 +96,9 @@ impl RobotExecutor {
     /// Execute an action on a robot, returning result
     pub fn execute_action(&self, robot: &mut Robot, action: RobotAction) -> Result<(), String> {
         match action {
-            RobotAction::Move(direction) => {
-                robot.move_in_direction(direction)
-                    .map_err(|e| format!("Movement failed: {}", e))
-            }
+            RobotAction::Move(direction) => robot
+                .move_in_direction(direction)
+                .map_err(|e| format!("Movement failed: {}", e)),
             RobotAction::Idle => {
                 robot.set_state(RobotState::Idle);
                 Ok(())
@@ -128,9 +133,9 @@ mod tests {
     fn explorer_decides_to_move_when_idle() {
         let robot = Robot::new(1, RobotType::Explorer, 5, 5, 100);
         let behavior = ExplorerBehavior;
-        
+
         let action = behavior.decide_action(&robot);
-        
+
         assert_eq!(action, RobotAction::Move(Direction::North));
     }
 
@@ -139,9 +144,9 @@ mod tests {
         let robot = Robot::new(1, RobotType::Explorer, 5, 5, 5);
         let behavior = ExplorerBehavior;
         let action = RobotAction::Move(Direction::North);
-        
+
         let can_execute = behavior.can_execute(&robot, &action);
-        
+
         assert!(!can_execute);
     }
 
@@ -149,9 +154,9 @@ mod tests {
     fn harvester_decides_to_move_when_idle() {
         let robot = Robot::new(2, RobotType::Harvester, 5, 5, 100);
         let behavior = HarvesterBehavior;
-        
+
         let action = behavior.decide_action(&robot);
-        
+
         assert_eq!(action, RobotAction::Move(Direction::South));
     }
 
@@ -160,9 +165,9 @@ mod tests {
         let mut robot = Robot::new(2, RobotType::Harvester, 5, 5, 100);
         robot.set_state(RobotState::MovingToResource);
         let behavior = HarvesterBehavior;
-        
+
         let action = behavior.decide_action(&robot);
-        
+
         assert_eq!(action, RobotAction::CollectResource);
     }
 
@@ -170,9 +175,9 @@ mod tests {
     fn scientist_decides_to_move_when_idle() {
         let robot = Robot::new(3, RobotType::Scientist, 5, 5, 100);
         let behavior = ScientistBehavior;
-        
+
         let action = behavior.decide_action(&robot);
-        
+
         assert_eq!(action, RobotAction::Move(Direction::East));
     }
 
@@ -181,9 +186,9 @@ mod tests {
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 100);
         let executor = RobotExecutor::new();
         let action = RobotAction::Move(Direction::North);
-        
+
         let result = executor.execute_action(&mut robot, action);
-        
+
         assert!(result.is_ok());
         assert_eq!(robot.position(), (5, 4));
     }
@@ -191,18 +196,27 @@ mod tests {
     #[test]
     fn robot_executor_gets_correct_behavior() {
         let executor = RobotExecutor::new();
-        
+
         let explorer_behavior = executor.get_behavior(&RobotType::Explorer);
         let harvester_behavior = executor.get_behavior(&RobotType::Harvester);
         let scientist_behavior = executor.get_behavior(&RobotType::Scientist);
-        
+
         // Test that each behavior type works correctly
         let explorer_robot = Robot::new(1, RobotType::Explorer, 0, 0, 100);
         let harvester_robot = Robot::new(2, RobotType::Harvester, 0, 0, 100);
         let scientist_robot = Robot::new(3, RobotType::Scientist, 0, 0, 100);
-        
-        assert_eq!(explorer_behavior.decide_action(&explorer_robot), RobotAction::Move(Direction::North));
-        assert_eq!(harvester_behavior.decide_action(&harvester_robot), RobotAction::Move(Direction::South));
-        assert_eq!(scientist_behavior.decide_action(&scientist_robot), RobotAction::Move(Direction::East));
+
+        assert_eq!(
+            explorer_behavior.decide_action(&explorer_robot),
+            RobotAction::Move(Direction::North)
+        );
+        assert_eq!(
+            harvester_behavior.decide_action(&harvester_robot),
+            RobotAction::Move(Direction::South)
+        );
+        assert_eq!(
+            scientist_behavior.decide_action(&scientist_robot),
+            RobotAction::Move(Direction::East)
+        );
     }
-} 
+}
