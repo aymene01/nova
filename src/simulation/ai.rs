@@ -35,6 +35,28 @@ impl RobotBehavior for ExplorerBehavior {
     }
 }
 
+/// Harvester robot behavior - focuses on collecting energy and minerals
+pub struct HarvesterBehavior;
+
+impl RobotBehavior for HarvesterBehavior {
+    fn decide_action(&self, robot: &Robot) -> RobotAction {
+        match robot.state() {
+            RobotState::Idle => RobotAction::Move(Direction::South),
+            RobotState::MovingToResource => RobotAction::CollectResource,
+            RobotState::Harvesting => RobotAction::ReturnToStation,
+            _ => RobotAction::Idle,
+        }
+    }
+
+    fn can_execute(&self, robot: &Robot, action: &RobotAction) -> bool {
+        match action {
+            RobotAction::Move(_) => robot.energy() >= 10, // MOVE_ENERGY_COST
+            RobotAction::CollectResource => robot.carrying.is_none(),
+            _ => true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -59,5 +81,26 @@ mod tests {
         let can_execute = behavior.can_execute(&robot, &action);
         
         assert!(!can_execute);
+    }
+
+    #[test]
+    fn harvester_decides_to_move_when_idle() {
+        let robot = Robot::new(2, RobotType::Harvester, 5, 5, 100);
+        let behavior = HarvesterBehavior;
+        
+        let action = behavior.decide_action(&robot);
+        
+        assert_eq!(action, RobotAction::Move(Direction::South));
+    }
+
+    #[test]
+    fn harvester_decides_to_collect_when_at_resource() {
+        let mut robot = Robot::new(2, RobotType::Harvester, 5, 5, 100);
+        robot.set_state(RobotState::MovingToResource);
+        let behavior = HarvesterBehavior;
+        
+        let action = behavior.decide_action(&robot);
+        
+        assert_eq!(action, RobotAction::CollectResource);
     }
 } 
