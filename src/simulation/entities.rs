@@ -230,6 +230,23 @@ impl Robot {
         self.energy -= MOVE_ENERGY_COST;
         Ok(())
     }
+
+    pub fn detect_resource_at_position(&self, map: &Map) -> Option<(ResourceType, u32)> {
+        map.resources.get(&(self.x, self.y)).cloned()
+    }
+
+    pub fn collect_resource(&mut self, map: &mut Map) -> Result<(), &'static str> {
+        if self.carrying.is_some() {
+            return Err("Already carrying a resource");
+        }
+
+        if let Some(resource) = map.resources.remove(&(self.x, self.y)) {
+            self.carrying = Some(resource);
+            Ok(())
+        } else {
+            Err("No resource found at position")
+        }
+    }
 }
 
 #[allow(dead_code)]
@@ -321,5 +338,46 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(robot.energy(), 10); // Energy unchanged
+    }
+
+    #[test]
+    fn robot_can_detect_resources_at_position() {
+        let mut map = Map::new_test_map(5, 5);
+        map.resources.insert((2, 2), (ResourceType::Energy, 50));
+        
+        let robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
+        
+        let resource = robot.detect_resource_at_position(&map);
+        assert!(resource.is_some());
+        let (resource_type, amount) = resource.unwrap();
+        assert_eq!(resource_type, ResourceType::Energy);
+        assert_eq!(amount, 50);
+    }
+
+    #[test]
+    fn robot_cannot_collect_when_already_carrying() {
+        let mut map = Map::new_test_map(5, 5);
+        map.resources.insert((2, 2), (ResourceType::Energy, 50));
+        
+        let mut robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
+        robot.carrying = Some((ResourceType::Mineral, 30));
+        
+        let result = robot.collect_resource(&mut map);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn robot_can_collect_resource_successfully() {
+        let mut map = Map::new_test_map(5, 5);
+        map.resources.insert((3, 3), (ResourceType::Mineral, 75));
+        
+        let mut robot = Robot::new(1, RobotType::Harvester, 3, 3, 100);
+        
+        let result = robot.collect_resource(&mut map);
+        assert!(result.is_ok());
+        assert_eq!(robot.carrying, Some((ResourceType::Mineral, 75)));
+        
+        // Resource should be removed from map
+        assert!(!map.resources.contains_key(&(3, 3)));
     }
 }
