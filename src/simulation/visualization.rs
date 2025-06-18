@@ -1,4 +1,4 @@
-use crate::simulation::entities::{Map, ResourceType};
+use crate::simulation::entities::{Map, ResourceType, Robot, RobotType};
 use crate::simulation::map::TerrainType;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -20,23 +20,32 @@ pub struct MapVisualizer;
 
 impl MapVisualizer {
     /// Visualizes the map in the terminal
+    #[allow(dead_code)]
     pub fn visualize(map: &Map) -> Result<(), Box<dyn std::error::Error>> {
+        Self::visualize_with_robots(map, &[])
+    }
+
+    /// Visualizes the map with robots in the terminal
+    pub fn visualize_with_robots(
+        map: &Map,
+        robots: &[Robot],
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if io::stdout().is_terminal() && io::stdin().is_terminal() {
-            Self::visualize_tui(map)
+            Self::visualize_tui(map, robots)
         } else {
-            Self::visualize_fallback(map);
+            Self::visualize_fallback(map, robots);
             Ok(())
         }
     }
 
-    fn visualize_tui(map: &Map) -> Result<(), Box<dyn std::error::Error>> {
+    fn visualize_tui(map: &Map, robots: &[Robot]) -> Result<(), Box<dyn std::error::Error>> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
-        let mut app = App::new(map);
+        let mut app = App::new(map, robots);
         let res = Self::run_app(&mut terminal, &mut app);
 
         disable_raw_mode()?;
@@ -54,15 +63,22 @@ impl MapVisualizer {
         Ok(())
     }
 
-    fn visualize_fallback(map: &Map) {
-        println!("Map {}x{} (seed: {})", map.width, map.height, map.seed);
+    fn visualize_fallback(map: &Map, robots: &[Robot]) {
+        println!(
+            "Map {}x{} (seed: {}) - {} robots",
+            map.width,
+            map.height,
+            map.seed,
+            robots.len()
+        );
         println!("Legend: . Plain  ^ Hill  ▲ Mountain  # Canyon");
         println!("Resources: E Energy  M Mineral  S Scientific Interest");
+        println!("Robots: X Explorer  H Harvester  R Scientist  @ Station");
         println!();
 
         for y in 0..map.height {
             for x in 0..map.width {
-                let (symbol, _) = Self::get_cell_display(map, x, y);
+                let (symbol, _) = Self::get_cell_display(map, robots, x, y);
                 print!("{} ", symbol);
             }
             println!();
@@ -73,33 +89,40 @@ impl MapVisualizer {
         println!("Energy: {} units", energy_count);
         println!("Minerals: {} units", mineral_count);
         println!("Scientific Interest: {} units", scientific_count);
+
+        println!("\nRobot Status:");
+        for robot in robots {
+            println!(
+                "  Robot {}: {:?} at ({},{}) with {} energy",
+                robot.id, robot.robot_type, robot.x, robot.y, robot.energy
+            );
+        }
     }
 
     fn run_app<B: ratatui::backend::Backend>(
         terminal: &mut Terminal<B>,
         app: &mut App,
     ) -> io::Result<()> {
-        loop {
-            terminal.draw(|f| Self::ui(f, app))?;
+        // Non-blocking version - just draw once and return
+        terminal.draw(|f| Self::ui(f, app))?;
 
+        // Check for quit key non-blocking
+        if event::poll(std::time::Duration::from_millis(0))? {
             if let Event::Key(key) = event::read()? {
-                match key.code {
-                    KeyCode::Char('q') => return Ok(()),
-                    KeyCode::Up => app.scroll_up(),
-                    KeyCode::Down => app.scroll_down(),
-                    KeyCode::Left => app.scroll_left(),
-                    KeyCode::Right => app.scroll_right(),
-                    _ => {}
+                if key.code == KeyCode::Char('q') {
+                    return Err(io::Error::new(io::ErrorKind::Interrupted, "User quit"));
                 }
             }
         }
+
+        Ok(())
     }
 
-    fn ui(f: &mut Frame, app: &App) {
+    pub fn ui(f: &mut Frame, app: &App) {
         let stats_height = if app.map.width * app.map.height > 400 {
-            9
+            12
         } else {
-            8
+            11
         };
 
         let chunks = Layout::default()
@@ -155,7 +178,7 @@ impl MapVisualizer {
                     && map_x < app.map.width
                     && map_y < app.map.height
                 {
-                    let (symbol, color) = Self::get_cell_display(app.map, map_x, map_y);
+                    let (symbol, color) = Self::get_cell_display(app.map, app.robots, map_x, map_y);
                     spans.push(Span::styled(
                         format!("{} ", symbol),
                         Style::default().fg(color),
@@ -174,8 +197,12 @@ impl MapVisualizer {
         };
 
         let title = format!(
-            "Map {}x{} (seed: {}){} - 'q' to quit",
-            app.map.width, app.map.height, app.map.seed, scroll_info
+            "Map {}x{} (seed: {}) - {} robots{} - 'q' to quit",
+            app.map.width,
+            app.map.height,
+            app.map.seed,
+            app.robots.len(),
+            scroll_info
         );
 
         let paragraph = Paragraph::new(lines)
@@ -189,8 +216,17 @@ impl MapVisualizer {
         let (energy_count, mineral_count, scientific_count) = app.get_resource_stats();
 
         let map_density = ((app.map.width * app.map.height) as f32 / 100.0).max(1.0);
-        let resource_density =
+        let _resource_density =
             (energy_count + mineral_count + scientific_count) as f32 / map_density;
+
+        // Calculate robot statistics
+        let (explorers, harvesters, scientists) = app.get_robot_stats();
+        let total_energy: u32 = app.robots.iter().map(|r| r.energy).sum();
+        let avg_energy = if !app.robots.is_empty() {
+            total_energy as f32 / app.robots.len() as f32
+        } else {
+            0.0
+        };
 
         let legend_text = vec![
             Line::from(vec![
@@ -201,95 +237,157 @@ impl MapVisualizer {
                 Span::raw(" Hill  "),
                 Span::styled("▲", Style::default().fg(Color::Red)),
                 Span::raw(" Mountain  "),
-                Span::styled("#", Style::default().fg(Color::Magenta)),
+                Span::styled("#", Style::default().fg(Color::DarkGray)),
                 Span::raw(" Canyon"),
             ]),
             Line::from(vec![
-                Span::raw("Resources: "),
-                Span::styled("E", Style::default().fg(Color::LightGreen)),
+                Span::styled("Resources: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled("E", Style::default().fg(Color::Cyan)),
                 Span::raw(" Energy  "),
-                Span::styled("M", Style::default().fg(Color::LightBlue)),
+                Span::styled("M", Style::default().fg(Color::Magenta)),
                 Span::raw(" Mineral  "),
-                Span::styled("S", Style::default().fg(Color::LightCyan)),
+                Span::styled("S", Style::default().fg(Color::Blue)),
                 Span::raw(" Scientific"),
+            ]),
+            Line::from(vec![
+                Span::styled("Robots: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled("X", Style::default().fg(Color::White)),
+                Span::raw(" Explorer  "),
+                Span::styled("H", Style::default().fg(Color::Yellow)),
+                Span::raw(" Harvester  "),
+                Span::styled("R", Style::default().fg(Color::Cyan)),
+                Span::raw(" Scientist  "),
+                Span::styled("@", Style::default().fg(Color::Green)),
+                Span::raw(" Station"),
             ]),
             Line::from(""),
             Line::from(vec![
-                Span::styled("Statistics:", Style::default().add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "Statistics: ",
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
                 Span::raw(format!(
-                    " Size: {}x{} ({} cells)",
+                    "Size: {}x{} ({} cells)",
                     app.map.width,
                     app.map.height,
                     app.map.width * app.map.height
                 )),
             ]),
-            Line::from(format!("Energy: {} units", energy_count)),
-            Line::from(format!("Minerals: {} units", mineral_count)),
-            Line::from(format!("Scientific: {} units", scientific_count)),
-            Line::from(format!(
-                "Density: {:.1} resources/100 cells",
-                resource_density
-            )),
+            Line::from(vec![
+                Span::styled("Energy: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!("{} units", energy_count)),
+            ]),
+            Line::from(vec![
+                Span::styled("Minerals: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!("{} units", mineral_count)),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "Scientific: ",
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(format!("{} units", scientific_count)),
+            ]),
+            Line::from(vec![
+                Span::styled("Robots: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(
+                    "{} total ({}X/{}H/{}R)",
+                    app.robots.len(),
+                    explorers,
+                    harvesters,
+                    scientists
+                )),
+            ]),
+            Line::from(vec![
+                Span::styled("Energy: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!("Total: {} | Avg: {:.1}", total_energy, avg_energy)),
+            ]),
         ];
 
         let paragraph = Paragraph::new(legend_text)
-            .block(Block::default().borders(Borders::ALL).title("Info"))
+            .block(Block::default().borders(Borders::ALL).title("Statistics"))
             .wrap(Wrap { trim: true });
 
         f.render_widget(paragraph, area);
     }
 
-    fn get_cell_display(map: &Map, x: usize, y: usize) -> (char, Color) {
+    fn get_cell_display(map: &Map, robots: &[Robot], x: usize, y: usize) -> (char, Color) {
+        // Check if there's a robot at this position
+        for robot in robots {
+            if robot.x == x && robot.y == y {
+                return match robot.robot_type {
+                    RobotType::Explorer => ('X', Color::White),
+                    RobotType::Harvester => ('H', Color::Yellow),
+                    RobotType::Scientist => ('R', Color::Cyan),
+                };
+            }
+        }
+
+        // Check if this is the station position (center of map)
+        let station_x = map.width / 2;
+        let station_y = map.height / 2;
+        if x == station_x && y == station_y {
+            return ('@', Color::Green);
+        }
+
+        // Check for resources first
         if let Some((resource_type, _)) = map.resources.get(&(x, y)) {
-            match resource_type {
-                ResourceType::Energy => ('E', Color::LightGreen),
-                ResourceType::Mineral => ('M', Color::LightBlue),
-                ResourceType::ScientificInterest => ('S', Color::LightCyan),
-            }
-        } else {
-            let terrain_type = TerrainType::from(map.terrain[y][x]);
-            match terrain_type {
-                TerrainType::Plain => ('.', Color::Green),
-                TerrainType::Hill => ('^', Color::Yellow),
-                TerrainType::Mountain => ('▲', Color::Red),
-                TerrainType::Canyon => ('#', Color::Magenta),
-            }
+            return match resource_type {
+                ResourceType::Energy => ('E', Color::Cyan),
+                ResourceType::Mineral => ('M', Color::Magenta),
+                ResourceType::ScientificInterest => ('S', Color::Blue),
+            };
+        }
+
+        // Then check terrain
+        let terrain_value = map.terrain[y][x];
+        match TerrainType::from(terrain_value) {
+            TerrainType::Plain => ('.', Color::Green),
+            TerrainType::Hill => ('^', Color::Yellow),
+            TerrainType::Mountain => ('▲', Color::Red),
+            TerrainType::Canyon => ('#', Color::DarkGray),
         }
     }
 }
 
-struct App<'a> {
+pub struct App<'a> {
     map: &'a Map,
+    robots: &'a [Robot],
     offset_x: usize,
     offset_y: usize,
 }
 
 impl<'a> App<'a> {
-    fn new(map: &'a Map) -> Self {
+    pub fn new(map: &'a Map, robots: &'a [Robot]) -> Self {
         Self {
             map,
+            robots,
             offset_x: 0,
             offset_y: 0,
         }
     }
 
+    #[allow(dead_code)]
     fn scroll_up(&mut self) {
         self.offset_y = self.offset_y.saturating_sub(1);
     }
 
+    #[allow(dead_code)]
     fn scroll_down(&mut self) {
-        if self.map.height > 1 {
-            self.offset_y = (self.offset_y + 1).min(self.map.height - 1);
+        if self.offset_y + 1 < self.map.height {
+            self.offset_y += 1;
         }
     }
 
+    #[allow(dead_code)]
     fn scroll_left(&mut self) {
         self.offset_x = self.offset_x.saturating_sub(1);
     }
 
+    #[allow(dead_code)]
     fn scroll_right(&mut self) {
-        if self.map.width > 1 {
-            self.offset_x = (self.offset_x + 1).min(self.map.width - 1);
+        if self.offset_x + 1 < self.map.width {
+            self.offset_x += 1;
         }
     }
 
@@ -297,13 +395,29 @@ impl<'a> App<'a> {
         Self::calculate_resource_stats(self.map)
     }
 
+    fn get_robot_stats(&self) -> (usize, usize, usize) {
+        let mut explorers = 0;
+        let mut harvesters = 0;
+        let mut scientists = 0;
+
+        for robot in self.robots {
+            match robot.robot_type {
+                RobotType::Explorer => explorers += 1,
+                RobotType::Harvester => harvesters += 1,
+                RobotType::Scientist => scientists += 1,
+            }
+        }
+
+        (explorers, harvesters, scientists)
+    }
+
     fn calculate_resource_stats(map: &Map) -> (u32, u32, u32) {
         let mut energy_count = 0;
         let mut mineral_count = 0;
         let mut scientific_count = 0;
 
-        for ((_, _), (res_type, amount)) in &map.resources {
-            match res_type {
+        for (resource_type, amount) in map.resources.values() {
+            match resource_type {
                 ResourceType::Energy => energy_count += amount,
                 ResourceType::Mineral => mineral_count += amount,
                 ResourceType::ScientificInterest => scientific_count += amount,

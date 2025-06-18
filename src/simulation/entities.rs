@@ -13,7 +13,7 @@ pub enum Direction {
 }
 
 /// Movement constants
-pub const MOVE_ENERGY_COST: u32 = 10;
+pub const MOVE_ENERGY_COST: u32 = 3;
 #[allow(dead_code)]
 pub const HARVEST_ENERGY_COST: u32 = 5;
 #[allow(dead_code)]
@@ -39,6 +39,339 @@ pub enum ResourceType {
     Energy,
     Mineral,
     ScientificInterest,
+}
+
+/// Information about a discovered location
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LocationInfo {
+    pub position: (usize, usize),
+    pub terrain_type: u8,
+    pub resource: Option<(ResourceType, u32)>,
+    pub discovered_by: usize, // robot ID
+    pub discovery_time: u64,  // simulation tick when discovered
+    pub confidence: f32,      // confidence level (0.0 to 1.0)
+}
+
+/// Represents a conflict between two pieces of information
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct InformationConflict {
+    pub position: (usize, usize),
+    pub current_info: LocationInfo,
+    pub new_info: LocationInfo,
+    pub conflict_type: ConflictType,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ConflictType {
+    ResourceAmountDifference,
+    ResourceTypeConflict,
+    TerrainMismatch,
+    ConfidenceConflict,
+}
+
+/// Resolution strategy for conflicts
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ConflictResolution {
+    KeepCurrent,
+    AcceptNew,
+    Merge,
+    RequiresManualReview,
+}
+
+/// Station's knowledge base of discovered locations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StationKnowledge {
+    pub locations: HashMap<(usize, usize), LocationInfo>,
+    pub conflicts: Vec<InformationConflict>,
+    pub merge_statistics: MergeStatistics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MergeStatistics {
+    pub total_merges: u32,
+    pub successful_merges: u32,
+    pub conflicts_resolved: u32,
+    pub manual_reviews_required: u32,
+}
+
+impl StationKnowledge {
+    pub fn new() -> Self {
+        Self {
+            locations: HashMap::new(),
+            conflicts: Vec::new(),
+            merge_statistics: MergeStatistics::default(),
+        }
+    }
+
+    /// Merge new information with existing knowledge
+    #[allow(dead_code)]
+    pub fn merge_information(
+        &mut self,
+        new_info: LocationInfo,
+    ) -> Result<ConflictResolution, String> {
+        self.merge_statistics.total_merges += 1;
+
+        if let Some(existing_info) = self.locations.get(&new_info.position) {
+            // Check for conflicts
+            if let Some(conflict) = self.detect_conflict(existing_info, &new_info) {
+                let resolution = self.resolve_conflict(&conflict)?;
+
+                match resolution {
+                    ConflictResolution::AcceptNew => {
+                        self.locations.insert(new_info.position, new_info);
+                        self.merge_statistics.successful_merges += 1;
+                        self.merge_statistics.conflicts_resolved += 1;
+                    }
+                    ConflictResolution::Merge => {
+                        let merged_info = self.merge_location_info(existing_info, &new_info)?;
+                        self.locations.insert(new_info.position, merged_info);
+                        self.merge_statistics.successful_merges += 1;
+                        self.merge_statistics.conflicts_resolved += 1;
+                    }
+                    ConflictResolution::KeepCurrent => {
+                        self.merge_statistics.successful_merges += 1;
+                        self.merge_statistics.conflicts_resolved += 1;
+                    }
+                    ConflictResolution::RequiresManualReview => {
+                        self.conflicts.push(conflict);
+                        self.merge_statistics.manual_reviews_required += 1;
+                    }
+                }
+
+                Ok(resolution)
+            } else {
+                // No conflict, update with newer/better information
+                let updated_info = self.update_location_info(existing_info, &new_info);
+                self.locations.insert(new_info.position, updated_info);
+                self.merge_statistics.successful_merges += 1;
+                Ok(ConflictResolution::Merge)
+            }
+        } else {
+            // New location, add it directly
+            self.locations.insert(new_info.position, new_info);
+            self.merge_statistics.successful_merges += 1;
+            Ok(ConflictResolution::AcceptNew)
+        }
+    }
+
+    /// Detect conflicts between existing and new information
+    #[allow(dead_code)]
+    fn detect_conflict(
+        &self,
+        existing: &LocationInfo,
+        new: &LocationInfo,
+    ) -> Option<InformationConflict> {
+        // Check for terrain mismatch
+        if existing.terrain_type != new.terrain_type {
+            return Some(InformationConflict {
+                position: new.position,
+                current_info: existing.clone(),
+                new_info: new.clone(),
+                conflict_type: ConflictType::TerrainMismatch,
+            });
+        }
+
+        // Check for resource conflicts
+        match (&existing.resource, &new.resource) {
+            (Some((existing_type, existing_amount)), Some((new_type, new_amount))) => {
+                if existing_type != new_type {
+                    return Some(InformationConflict {
+                        position: new.position,
+                        current_info: existing.clone(),
+                        new_info: new.clone(),
+                        conflict_type: ConflictType::ResourceTypeConflict,
+                    });
+                }
+
+                // Check for significant amount difference (>20% difference)
+                let amount_diff = (*existing_amount as f32 - *new_amount as f32).abs();
+                let avg_amount = (*existing_amount + *new_amount) as f32 / 2.0;
+                if amount_diff / avg_amount > 0.2 {
+                    return Some(InformationConflict {
+                        position: new.position,
+                        current_info: existing.clone(),
+                        new_info: new.clone(),
+                        conflict_type: ConflictType::ResourceAmountDifference,
+                    });
+                }
+            }
+            (Some(_), None) | (None, Some(_)) => {
+                // One has resource, other doesn't - potential conflict
+                let confidence_diff = (existing.confidence - new.confidence).abs();
+                if confidence_diff > 0.3 {
+                    return Some(InformationConflict {
+                        position: new.position,
+                        current_info: existing.clone(),
+                        new_info: new.clone(),
+                        conflict_type: ConflictType::ConfidenceConflict,
+                    });
+                }
+            }
+            _ => {} // Both None, no conflict
+        }
+
+        None
+    }
+
+    /// Resolve conflicts using intelligent strategies
+    #[allow(dead_code)]
+    fn resolve_conflict(
+        &self,
+        conflict: &InformationConflict,
+    ) -> Result<ConflictResolution, String> {
+        match conflict.conflict_type {
+            ConflictType::ResourceAmountDifference => {
+                // Use weighted average based on confidence and recency
+                Ok(ConflictResolution::Merge)
+            }
+            ConflictType::ResourceTypeConflict => {
+                // Prefer higher confidence, or newer information if confidence is similar
+                if (conflict.new_info.confidence - conflict.current_info.confidence).abs() < 0.1 {
+                    // Similar confidence, prefer newer
+                    if conflict.new_info.discovery_time > conflict.current_info.discovery_time {
+                        Ok(ConflictResolution::AcceptNew)
+                    } else {
+                        Ok(ConflictResolution::KeepCurrent)
+                    }
+                } else if conflict.new_info.confidence > conflict.current_info.confidence {
+                    Ok(ConflictResolution::AcceptNew)
+                } else {
+                    Ok(ConflictResolution::KeepCurrent)
+                }
+            }
+            ConflictType::TerrainMismatch => {
+                // Terrain should be consistent - this is a serious conflict
+                Ok(ConflictResolution::RequiresManualReview)
+            }
+            ConflictType::ConfidenceConflict => {
+                // Prefer higher confidence
+                if conflict.new_info.confidence > conflict.current_info.confidence {
+                    Ok(ConflictResolution::AcceptNew)
+                } else {
+                    Ok(ConflictResolution::KeepCurrent)
+                }
+            }
+        }
+    }
+
+    /// Merge two LocationInfo objects intelligently
+    #[allow(dead_code)]
+    fn merge_location_info(
+        &self,
+        existing: &LocationInfo,
+        new: &LocationInfo,
+    ) -> Result<LocationInfo, String> {
+        let mut merged = existing.clone();
+
+        // Use weighted average for resource amounts
+        if let (Some((existing_type, existing_amount)), Some((new_type, new_amount))) =
+            (&existing.resource, &new.resource)
+        {
+            if existing_type == new_type {
+                // Weighted average based on confidence
+                let total_confidence = existing.confidence + new.confidence;
+                let weighted_amount = ((*existing_amount as f32 * existing.confidence)
+                    + (*new_amount as f32 * new.confidence))
+                    / total_confidence;
+
+                merged.resource = Some((existing_type.clone(), weighted_amount as u32));
+            }
+        }
+
+        // Update confidence to average
+        merged.confidence = (existing.confidence + new.confidence) / 2.0;
+
+        // Update discovery time to most recent
+        merged.discovery_time = merged.discovery_time.max(new.discovery_time);
+
+        // Update discovered_by to most confident robot
+        if new.confidence > existing.confidence {
+            merged.discovered_by = new.discovered_by;
+        }
+
+        Ok(merged)
+    }
+
+    /// Update location info with newer/better information
+    #[allow(dead_code)]
+    fn update_location_info(&self, existing: &LocationInfo, new: &LocationInfo) -> LocationInfo {
+        let mut updated = existing.clone();
+
+        // Update if new information is more recent or more confident
+        if new.discovery_time > existing.discovery_time || new.confidence > existing.confidence {
+            updated.confidence = new.confidence.max(existing.confidence);
+            updated.discovery_time = new.discovery_time.max(existing.discovery_time);
+
+            if new.confidence > existing.confidence {
+                updated.discovered_by = new.discovered_by;
+                if new.resource.is_some() {
+                    updated.resource = new.resource.clone();
+                }
+            }
+        }
+
+        updated
+    }
+
+    /// Get information about a specific location
+    #[allow(dead_code)]
+    pub fn get_location_info(&self, position: (usize, usize)) -> Option<&LocationInfo> {
+        self.locations.get(&position)
+    }
+
+    /// Get all discovered locations
+    #[allow(dead_code)]
+    pub fn get_all_locations(&self) -> &HashMap<(usize, usize), LocationInfo> {
+        &self.locations
+    }
+
+    /// Get pending conflicts
+    #[allow(dead_code)]
+    pub fn get_conflicts(&self) -> &Vec<InformationConflict> {
+        &self.conflicts
+    }
+
+    /// Get merge statistics
+    #[allow(dead_code)]
+    pub fn get_merge_statistics(&self) -> &MergeStatistics {
+        &self.merge_statistics
+    }
+
+    /// Resolve a pending conflict manually
+    #[allow(dead_code)]
+    pub fn resolve_manual_conflict(
+        &mut self,
+        conflict_index: usize,
+        resolution: ConflictResolution,
+    ) -> Result<(), String> {
+        if conflict_index >= self.conflicts.len() {
+            return Err("Invalid conflict index".to_string());
+        }
+
+        let conflict = self.conflicts.remove(conflict_index);
+
+        match resolution {
+            ConflictResolution::AcceptNew => {
+                self.locations.insert(conflict.position, conflict.new_info);
+            }
+            ConflictResolution::KeepCurrent => {
+                // Keep existing, no change needed
+            }
+            ConflictResolution::Merge => {
+                let merged =
+                    self.merge_location_info(&conflict.current_info, &conflict.new_info)?;
+                self.locations.insert(conflict.position, merged);
+            }
+            ConflictResolution::RequiresManualReview => {
+                // Put it back
+                self.conflicts.push(conflict);
+                return Err("Cannot resolve to manual review".to_string());
+            }
+        }
+
+        self.merge_statistics.conflicts_resolved += 1;
+        Ok(())
+    }
 }
 
 #[allow(dead_code)]
@@ -153,7 +486,7 @@ pub enum RobotType {
 }
 
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Robot {
     pub id: usize,
     pub robot_type: RobotType,
@@ -330,6 +663,7 @@ pub struct Station {
     pub discoveries: u32,
     pub x: usize,
     pub y: usize,
+    pub knowledge: StationKnowledge,
 }
 
 impl Station {
@@ -340,6 +674,7 @@ impl Station {
             discoveries: 0,
             x,
             y,
+            knowledge: StationKnowledge::new(),
         }
     }
 
@@ -403,6 +738,136 @@ impl Station {
     pub fn can_recharge(&self) -> bool {
         self.get_resource_amount(&ResourceType::Energy) > 0
     }
+
+    /// Process robot discoveries and merge with station knowledge
+    #[allow(dead_code)]
+    pub fn process_robot_discovery(
+        &mut self,
+        robot_id: usize,
+        position: (usize, usize),
+        terrain_type: u8,
+        resource: Option<(ResourceType, u32)>,
+        discovery_time: u64,
+        confidence: f32,
+    ) -> Result<ConflictResolution, String> {
+        let location_info = LocationInfo {
+            position,
+            terrain_type,
+            resource,
+            discovered_by: robot_id,
+            discovery_time,
+            confidence,
+        };
+
+        self.knowledge.merge_information(location_info)
+    }
+
+    /// Get station's knowledge about a location
+    #[allow(dead_code)]
+    pub fn get_location_knowledge(&self, position: (usize, usize)) -> Option<&LocationInfo> {
+        self.knowledge.get_location_info(position)
+    }
+
+    /// Get all discovered locations
+    #[allow(dead_code)]
+    pub fn get_all_knowledge(&self) -> &HashMap<(usize, usize), LocationInfo> {
+        self.knowledge.get_all_locations()
+    }
+
+    /// Get pending conflicts that need resolution
+    #[allow(dead_code)]
+    pub fn get_pending_conflicts(&self) -> &Vec<InformationConflict> {
+        self.knowledge.get_conflicts()
+    }
+
+    /// Get merge statistics
+    #[allow(dead_code)]
+    pub fn get_knowledge_statistics(&self) -> &MergeStatistics {
+        self.knowledge.get_merge_statistics()
+    }
+
+    /// Manually resolve a conflict
+    #[allow(dead_code)]
+    pub fn resolve_conflict(
+        &mut self,
+        conflict_index: usize,
+        resolution: ConflictResolution,
+    ) -> Result<(), String> {
+        self.knowledge
+            .resolve_manual_conflict(conflict_index, resolution)
+    }
+
+    /// Get confidence-weighted resource estimates for planning
+    #[allow(dead_code)]
+    pub fn get_resource_estimates(
+        &self,
+        resource_type: &ResourceType,
+    ) -> Vec<(usize, usize, u32, f32)> {
+        self.knowledge
+            .locations
+            .iter()
+            .filter_map(|((x, y), info)| {
+                if let Some((res_type, amount)) = &info.resource {
+                    if res_type == resource_type {
+                        Some((*x, *y, *amount, info.confidence))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Get exploration recommendations based on knowledge gaps
+    #[allow(dead_code)]
+    pub fn get_exploration_recommendations(
+        &self,
+        map_width: usize,
+        map_height: usize,
+    ) -> Vec<(usize, usize)> {
+        let mut recommendations = Vec::new();
+
+        // Find areas with low coverage or conflicting information
+        for y in 0..map_height {
+            for x in 0..map_width {
+                let position = (x, y);
+
+                // Check if we have knowledge about this position
+                if let Some(info) = self.knowledge.get_location_info(position) {
+                    // Recommend re-exploration if confidence is low
+                    if info.confidence < 0.7 {
+                        recommendations.push(position);
+                    }
+                } else {
+                    // Recommend exploration of unknown areas
+                    recommendations.push(position);
+                }
+            }
+        }
+
+        // Sort by priority (unknown areas first, then low confidence)
+        recommendations.sort_by(|a, b| {
+            let a_info = self.knowledge.get_location_info(*a);
+            let b_info = self.knowledge.get_location_info(*b);
+
+            match (a_info, b_info) {
+                (None, None) => std::cmp::Ordering::Equal,
+                (None, Some(_)) => std::cmp::Ordering::Less, // Unknown areas first
+                (Some(_), None) => std::cmp::Ordering::Greater,
+                (Some(a_info), Some(b_info)) => {
+                    // Lower confidence first
+                    a_info
+                        .confidence
+                        .partial_cmp(&b_info.confidence)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }
+            }
+        });
+
+        recommendations
+    }
 }
 
 #[cfg(test)]
@@ -433,13 +898,13 @@ mod tests {
 
     #[test]
     fn robot_move_fails_with_insufficient_energy() {
-        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 5); // Only 5 energy
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 2); // Only 2 energy (less than MOVE_ENERGY_COST=3)
 
         let result = robot.move_in_direction(Direction::North);
 
         assert!(result.is_err());
         assert_eq!(robot.position(), (5, 5)); // Position unchanged
-        assert_eq!(robot.energy(), 5); // Energy unchanged
+        assert_eq!(robot.energy(), 2); // Energy unchanged
     }
 
     #[test]
@@ -682,8 +1147,8 @@ mod tests {
 
     #[test]
     fn robot_cannot_return_with_insufficient_energy() {
-        let robot = Robot::new(1, RobotType::Explorer, 0, 0, 30);
-        let station_pos = (5, 5); // Distance 10, needs 100 energy
+        let robot = Robot::new(1, RobotType::Explorer, 0, 0, 20); // Reduced from 30 to 20
+        let station_pos = (5, 5); // Distance 10, needs 30 energy (10 moves × 3 energy each)
 
         assert!(!robot.can_return_to_station(station_pos));
     }
@@ -790,11 +1255,270 @@ mod tests {
 
     #[test]
     fn station_can_recharge_check_works() {
+        let mut station = Station::new(0, 0);
+
+        // Initially no energy
+        assert!(!station.can_recharge());
+
+        // Add energy
+        station.receive_resource(ResourceType::Energy, 100);
+        assert!(station.can_recharge());
+
+        // Consume all energy by recharging multiple robots
+        let mut robot1 = Robot::new(1, RobotType::Explorer, 0, 0, 50);
+        let mut robot2 = Robot::new(2, RobotType::Explorer, 0, 0, 50);
+        let _ = station.recharge_robot(&mut robot1);
+        let _ = station.recharge_robot(&mut robot2);
+
+        // Should not be able to recharge anymore (100 energy used, 50 each)
+        assert!(!station.can_recharge());
+    }
+
+    #[test]
+    fn station_processes_robot_discovery_successfully() {
         let mut station = Station::new(5, 5);
 
-        assert!(!station.can_recharge()); // No energy
+        let result = station.process_robot_discovery(
+            1,                                // robot_id
+            (10, 15),                         // position
+            2,                                // terrain_type (Hill)
+            Some((ResourceType::Energy, 50)), // resource
+            100,                              // discovery_time
+            0.8,                              // confidence
+        );
 
-        station.receive_resource(ResourceType::Energy, 50);
-        assert!(station.can_recharge()); // Has energy
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictResolution::AcceptNew);
+
+        // Check that knowledge was stored
+        let knowledge = station.get_location_knowledge((10, 15));
+        assert!(knowledge.is_some());
+
+        let info = knowledge.unwrap();
+        assert_eq!(info.discovered_by, 1);
+        assert_eq!(info.terrain_type, 2);
+        assert_eq!(info.resource, Some((ResourceType::Energy, 50)));
+        assert_eq!(info.confidence, 0.8);
+    }
+
+    #[test]
+    fn station_merges_compatible_information() {
+        let mut station = Station::new(5, 5);
+
+        // First discovery
+        station
+            .process_robot_discovery(1, (3, 4), 1, Some((ResourceType::Mineral, 40)), 50, 0.7)
+            .unwrap();
+
+        // Second discovery with different but significant amount (>20% different: 40 vs 60)
+        let result = station.process_robot_discovery(
+            2,
+            (3, 4),
+            1,
+            Some((ResourceType::Mineral, 60)),
+            60,
+            0.8,
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictResolution::Merge);
+
+        let info = station.get_location_knowledge((3, 4)).unwrap();
+        // Should be weighted average: (40*0.7 + 60*0.8) / (0.7 + 0.8) = 76/1.5 ≈ 50.67
+        assert!(info.resource.is_some());
+        let (_, amount) = info.resource.as_ref().unwrap();
+        assert!(*amount >= 50 && *amount <= 52); // Allow for rounding
+    }
+
+    #[test]
+    fn station_detects_resource_type_conflicts() {
+        let mut station = Station::new(5, 5);
+
+        // First discovery - Energy
+        station
+            .process_robot_discovery(1, (7, 8), 0, Some((ResourceType::Energy, 30)), 100, 0.6)
+            .unwrap();
+
+        // Second discovery - Mineral (conflict!)
+        let result = station.process_robot_discovery(
+            2,
+            (7, 8),
+            0,
+            Some((ResourceType::Mineral, 35)),
+            110,
+            0.9,
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictResolution::AcceptNew); // Higher confidence wins
+
+        // Should have accepted the new (higher confidence) information
+        let info = station.get_location_knowledge((7, 8)).unwrap();
+        assert_eq!(info.resource, Some((ResourceType::Mineral, 35)));
+        assert_eq!(info.discovered_by, 2);
+    }
+
+    #[test]
+    fn station_handles_terrain_mismatch_conflicts() {
+        let mut station = Station::new(5, 5);
+
+        // First discovery
+        station
+            .process_robot_discovery(1, (2, 3), 0, None, 50, 0.8)
+            .unwrap(); // Plain
+
+        // Second discovery with different terrain
+        let result = station.process_robot_discovery(2, (2, 3), 2, None, 60, 0.7); // Mountain
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictResolution::RequiresManualReview);
+
+        // Should have a pending conflict
+        assert_eq!(station.get_pending_conflicts().len(), 1);
+
+        let conflict = &station.get_pending_conflicts()[0];
+        assert_eq!(conflict.conflict_type, ConflictType::TerrainMismatch);
+        assert_eq!(conflict.position, (2, 3));
+    }
+
+    #[test]
+    fn station_resolves_manual_conflicts() {
+        let mut station = Station::new(5, 5);
+
+        // Create a terrain conflict
+        station
+            .process_robot_discovery(1, (1, 1), 0, None, 50, 0.8)
+            .unwrap();
+        station
+            .process_robot_discovery(2, (1, 1), 2, None, 60, 0.7)
+            .unwrap();
+
+        assert_eq!(station.get_pending_conflicts().len(), 1);
+
+        // Manually resolve by accepting new
+        let result = station.resolve_conflict(0, ConflictResolution::AcceptNew);
+        assert!(result.is_ok());
+
+        // Conflict should be resolved
+        assert_eq!(station.get_pending_conflicts().len(), 0);
+
+        // Should have new terrain type
+        let info = station.get_location_knowledge((1, 1)).unwrap();
+        assert_eq!(info.terrain_type, 2);
+    }
+
+    #[test]
+    fn station_provides_resource_estimates() {
+        let mut station = Station::new(5, 5);
+
+        // Add several energy discoveries
+        station
+            .process_robot_discovery(1, (1, 1), 0, Some((ResourceType::Energy, 40)), 50, 0.9)
+            .unwrap();
+        station
+            .process_robot_discovery(2, (2, 2), 0, Some((ResourceType::Energy, 60)), 60, 0.7)
+            .unwrap();
+        station
+            .process_robot_discovery(3, (3, 3), 0, Some((ResourceType::Mineral, 30)), 70, 0.8)
+            .unwrap();
+
+        let energy_estimates = station.get_resource_estimates(&ResourceType::Energy);
+        assert_eq!(energy_estimates.len(), 2);
+
+        // Should contain both energy locations
+        let positions: Vec<(usize, usize)> = energy_estimates
+            .iter()
+            .map(|(x, y, _, _)| (*x, *y))
+            .collect();
+        assert!(positions.contains(&(1, 1)));
+        assert!(positions.contains(&(2, 2)));
+
+        // Check confidence values are included
+        for (_, _, _, confidence) in &energy_estimates {
+            assert!(*confidence > 0.0 && *confidence <= 1.0);
+        }
+    }
+
+    #[test]
+    fn station_provides_exploration_recommendations() {
+        let mut station = Station::new(5, 5);
+
+        // Add some discoveries with varying confidence
+        station
+            .process_robot_discovery(1, (0, 0), 0, None, 50, 0.9)
+            .unwrap(); // High confidence
+        station
+            .process_robot_discovery(2, (1, 1), 0, None, 60, 0.5)
+            .unwrap(); // Low confidence
+
+        let recommendations = station.get_exploration_recommendations(3, 3);
+
+        // Should recommend unknown areas and low confidence areas
+        assert!(!recommendations.is_empty());
+
+        // Low confidence area should be recommended
+        assert!(recommendations.contains(&(1, 1)));
+
+        // Unknown areas should be recommended
+        assert!(recommendations.contains(&(2, 2)));
+    }
+
+    #[test]
+    fn station_tracks_merge_statistics() {
+        let mut station = Station::new(5, 5);
+
+        let stats = station.get_knowledge_statistics();
+        assert_eq!(stats.total_merges, 0);
+        assert_eq!(stats.successful_merges, 0);
+
+        // Process some discoveries
+        station
+            .process_robot_discovery(1, (0, 0), 0, None, 50, 0.8)
+            .unwrap();
+        station
+            .process_robot_discovery(2, (1, 1), 0, None, 60, 0.7)
+            .unwrap();
+
+        // Create a conflict (terrain mismatch)
+        station
+            .process_robot_discovery(3, (0, 0), 2, None, 70, 0.6)
+            .unwrap();
+
+        let stats = station.get_knowledge_statistics();
+        assert_eq!(stats.total_merges, 3);
+        assert_eq!(stats.successful_merges, 2);
+        assert_eq!(stats.manual_reviews_required, 1);
+    }
+
+    #[test]
+    fn station_knowledge_handles_resource_amount_differences() {
+        let mut station = Station::new(5, 5);
+
+        // First discovery
+        station
+            .process_robot_discovery(1, (4, 4), 0, Some((ResourceType::Mineral, 100)), 50, 0.8)
+            .unwrap();
+
+        // Second discovery with significantly different amount (>20% difference)
+        let result = station.process_robot_discovery(
+            2,
+            (4, 4),
+            0,
+            Some((ResourceType::Mineral, 50)),
+            60,
+            0.8,
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictResolution::Merge);
+
+        // Should have merged the amounts based on confidence weighting
+        let info = station.get_location_knowledge((4, 4)).unwrap();
+        if let Some((_, amount)) = &info.resource {
+            // Weighted average: (100*0.8 + 50*0.8) / (0.8 + 0.8) = 75
+            assert_eq!(*amount, 75);
+        } else {
+            panic!("Expected resource information");
+        }
     }
 }

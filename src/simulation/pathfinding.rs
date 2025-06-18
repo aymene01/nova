@@ -11,8 +11,10 @@ struct PathNode {
 
 impl Ord for PathNode {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // Reverse ordering for min-heap behavior
-        (other.cost + other.heuristic).cmp(&(self.cost + self.heuristic))
+        // Reverse ordering for min-heap behavior with overflow protection
+        let self_total = self.cost.saturating_add(self.heuristic);
+        let other_total = other.cost.saturating_add(other.heuristic);
+        other_total.cmp(&self_total)
     }
 }
 
@@ -72,7 +74,7 @@ impl Pathfinder {
                 }
 
                 let tentative_g_score =
-                    g_score[&current.position] + Self::movement_cost(neighbor, map);
+                    g_score[&current.position].saturating_add(Self::movement_cost(neighbor, map));
 
                 if !g_score.contains_key(&neighbor) || tentative_g_score < g_score[&neighbor] {
                     came_from.insert(neighbor, current.position);
