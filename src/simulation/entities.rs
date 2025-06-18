@@ -153,6 +153,25 @@ impl Robot {
     pub fn robot_type(&self) -> RobotType {
         self.robot_type.clone()
     }
+
+    pub fn move_in_direction(&mut self, direction: Direction) -> Result<(), &'static str> {
+        if self.energy < MOVE_ENERGY_COST {
+            return Err("Insufficient energy");
+        }
+
+        let (new_x, new_y) = match direction {
+            Direction::North if self.y > 0 => (self.x, self.y - 1),
+            Direction::South => (self.x, self.y + 1),
+            Direction::East => (self.x + 1, self.y),
+            Direction::West if self.x > 0 => (self.x - 1, self.y),
+            _ => return Err("Invalid move: out of bounds"),
+        };
+
+        self.x = new_x;
+        self.y = new_y;
+        self.energy -= MOVE_ENERGY_COST;
+        Ok(())
+    }
 }
 
 #[allow(dead_code)]
@@ -183,9 +202,21 @@ mod tests {
     fn robot_move_north_with_sufficient_energy() {
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 50);
         
-        // This should pass once we implement move_in_direction
-        // For now, we'll implement a basic version
-        assert_eq!(robot.position(), (5, 5));
-        assert_eq!(robot.energy(), 50);
+        let result = robot.move_in_direction(Direction::North);
+        
+        assert!(result.is_ok());
+        assert_eq!(robot.position(), (5, 4)); // North reduces Y
+        assert_eq!(robot.energy(), 50 - MOVE_ENERGY_COST);
+    }
+
+    #[test]
+    fn robot_move_fails_with_insufficient_energy() {
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 5); // Only 5 energy
+        
+        let result = robot.move_in_direction(Direction::North);
+        
+        assert!(result.is_err());
+        assert_eq!(robot.position(), (5, 5)); // Position unchanged
+        assert_eq!(robot.energy(), 5); // Energy unchanged
     }
 }
