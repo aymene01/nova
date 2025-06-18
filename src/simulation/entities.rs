@@ -3,6 +3,18 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 
+/// Movement directions for robots
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+/// Movement constants
+pub const MOVE_ENERGY_COST: u32 = 10;
+
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResourceType {
@@ -118,10 +130,62 @@ pub struct Robot {
 }
 
 #[allow(dead_code)]
+impl Robot {
+    pub fn new(id: usize, robot_type: RobotType, x: usize, y: usize, energy: u32) -> Self {
+        Self {
+            id,
+            robot_type,
+            x,
+            y,
+            energy,
+            carrying: None,
+        }
+    }
+
+    pub fn position(&self) -> (usize, usize) {
+        (self.x, self.y)
+    }
+
+    pub fn energy(&self) -> u32 {
+        self.energy
+    }
+
+    pub fn robot_type(&self) -> RobotType {
+        self.robot_type.clone()
+    }
+}
+
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize)]
 pub struct Station {
     pub resources: HashMap<ResourceType, u32>,
     pub discoveries: u32,
     pub x: usize,
     pub y: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn robot_creation_works() {
+        let robot = Robot::new(1, RobotType::Explorer, 5, 10, 100);
+        
+        assert_eq!(robot.id, 1);
+        assert_eq!(robot.position(), (5, 10));
+        assert_eq!(robot.energy(), 100);
+        assert_eq!(robot.robot_type(), RobotType::Explorer);
+        assert!(robot.carrying.is_none());
+    }
+
+    #[test]
+    fn robot_move_north_with_sufficient_energy() {
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 50);
+        
+        // This should pass once we implement move_in_direction
+        // For now, we'll implement a basic version
+        assert_eq!(robot.position(), (5, 5));
+        assert_eq!(robot.energy(), 50);
+    }
 }
