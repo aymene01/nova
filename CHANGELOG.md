@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0](https://github.com/aymene01/nova/compare/@nova-v0.1.0...@nova-v0.2.0) (2025-06-18)
+
+
+### Features
+
+* improve config UI and input handling ([#7](https://github.com/aymene01/nova/issues/7)) ([005f00f](https://github.com/aymene01/nova/commit/005f00f45ede3726756a4ba88fd6ff0e8ac726e3))
+* **map:** Implement Map Generation System with Perlin Noise ([#9](https://github.com/aymene01/nova/issues/9)) ([e0301fc](https://github.com/aymene01/nova/commit/e0301fcbda238bd6db9fac009541556858ccf1dc))
+* robot AI system with Explorer, Harvester, Scientist behaviors ([#10](https://github.com/aymene01/nova/issues/10)) ([c46e510](https://github.com/aymene01/nova/commit/c46e51013869c3bd18741f8a74e8534ff3ecf86f))
+
 ## 0.1.0 (2025-05-12)
 
 
