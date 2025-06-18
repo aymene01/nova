@@ -1,223 +1,278 @@
-# Nova - Autonomous Robot Simulation System
+# Nova - Robot Swarm Simulation
 
-Nova is a sophisticated robot simulation system written in Rust that models autonomous robots with specialized behaviors operating in a dynamic environment. The system features three distinct robot types, each with unique capabilities and decision-making processes, supported by an advanced A* pathfinding algorithm.
+Nova is a Rust-based robot swarm simulation system featuring live visualization, procedural map generation, and autonomous robot movement. The system demonstrates real-time robot behavior through an interactive terminal interface with advanced information merging capabilities.
 
-## 🤖 Robot Types and Behaviors
+## 🎮 Live Simulation Features
 
-### Explorer Robot 🗺️
-**Primary Mission**: Mapping and area discovery
+### Real-Time TUI Visualization
 
-**Characteristics:**
-- **Energy Consumption**: 2 energy units per action (most efficient)
-- **Energy Threshold**: Returns to station when energy drops below 20
-- **Preferred Resources**: None (exploration-focused)
-- **Specialization**: Systematic exploration and mapping
+- **Interactive Terminal Interface**: Built with ratatui for smooth, responsive visualization
+- **Live Robot Movement**: Watch 25 robots move across a 100x100 procedurally generated map
+- **Terrain Visualization**: See different terrain types (Plains, Hills, Mountains, Canyons)
+- **Resource Display**: Energy (E), Minerals (M), and Scientific Interest (S) points
+- **Station Monitoring**: Central station (@) for robot recharging and coordination
 
-**Behavior Pattern:**
-- **Low Energy/Carrying Resources**: Returns to station immediately
-- **Primary Action**: Seeks unexplored areas within a 5-unit radius
-- **Fallback Action**: Uses deterministic random exploration based on robot state
-- **Exploration Strategy**: Systematic area discovery with 3-unit radius exploration tasks
+### Controls
 
-**Decision Logic:**
-```rust
-Priority 9: Return to station (energy < 20 OR carrying resources)
-Priority 7: Explore unexplored areas (radius 3)
-Priority 5: Random exploration target (radius 2)
-```
+- **'q'**: Quit simulation gracefully
+- **Arrow Keys**: Scroll around large maps (when applicable)
 
-### Harvester Robot ⛏️
-**Primary Mission**: Resource collection and extraction
+## 🤖 Robot System
 
-**Characteristics:**
-- **Energy Consumption**: 3 energy units per action
-- **Energy Threshold**: Returns to station when energy drops below 15
-- **Preferred Resources**: Energy and Mineral resources
-- **Specialization**: Efficient resource gathering
+### Three Robot Types
 
-**Behavior Pattern:**
-- **Low Energy/Carrying Resources**: Returns to station immediately
-- **Primary Action**: Searches for Energy or Mineral resources within 4-unit radius
-- **Resource Prioritization**: Targets preferred resources (Energy/Mineral) over others
-- **Fallback Action**: Explores for new resource locations when none are nearby
+- **Explorer (X)**: Autonomous exploration robots
+- **Harvester (H)**: Resource collection specialists
+- **Scientist (S)**: Research and analysis units
 
-**Decision Logic:**
-```rust
-Priority 10: Return to station (energy < 15 OR carrying resources)
-Priority 8:  Harvest preferred resources (Energy/Mineral)
-Priority 6:  Explore for new resource locations
-```
+### Robot Behavior
 
-### Scientist Robot 🔬
-**Primary Mission**: Scientific research and analysis
+- **Random Movement**: Robots explore the map using intelligent random patterns
+- **Energy Management**: Automatic recharging when energy drops below 50%
+- **Boundary Awareness**: Robots avoid map edges and invalid positions
+- **Continuous Operation**: Forgiving energy system ensures constant movement
 
-**Characteristics:**
-- **Energy Consumption**: 4 energy units per action (most energy-intensive)
-- **Energy Threshold**: Returns to station when energy drops below 25 (highest threshold)
-- **Preferred Resources**: Scientific Interest points
-- **Specialization**: Scientific analysis and research
+### Energy System
 
-**Behavior Pattern:**
-- **Low Energy/Carrying Data**: Returns to station immediately
-- **Primary Action**: Searches for Scientific Interest points within 6-unit radius
-- **Analysis Strategy**: Determines analysis type based on terrain and resource density
-- **Research Focus**: Systematic exploration for scientific discovery
+- **Movement Cost**: 3 energy units per move (reduced for better gameplay)
+- **Automatic Recharging**: Robots gain 20 energy when below 50%
+- **Station Support**: Station provides 10,000 energy units for robot operations
+- **Sustainable Operation**: Energy system designed for continuous exploration
 
-**Decision Logic:**
-```rust
-Priority 9: Return to station (energy < 25 OR carrying data)
-Priority 8: Analyze scientific interests (Chemical analysis)
-Priority 6: Systematic scientific exploration
-```
+## 🗺️ Procedural World Generation
 
-**Analysis Type Determination:**
-- Considers terrain value and nearby resource density
-- Enhanced logic for future expansion to Geological, Biological analysis types
-- Currently optimized for Chemical analysis based on resource concentration
+### Perlin Noise-Based Terrain
 
-## 🗺️ Pathfinding System
+- **Deterministic Generation**: Same seed produces identical maps
+- **Four Terrain Types**:
+  - **Plains (.)**: Easy traversal, common areas
+  - **Hills (^)**: Moderate difficulty terrain
+  - **Mountains (▲)**: Challenging high-altitude areas
+  - **Canyons (#)**: Deep terrain features
 
-### A* Algorithm Implementation
-The pathfinding system uses the A* algorithm for optimal path calculation with the following features:
+### Resource Distribution
 
-**Core Components:**
-- **Heuristic Function**: Manhattan distance for efficient path estimation
-- **Cost Calculation**: Uniform cost (1) for adjacent moves, √2 for diagonal moves
-- **Obstacle Avoidance**: Dynamic terrain analysis and obstacle detection
-- **Boundary Checking**: Ensures paths stay within map bounds
+- **Energy Sources (E)**: Power for robot operations
+- **Mineral Deposits (M)**: Valuable extraction targets
+- **Scientific Interest (S)**: Research and analysis points
+- **Realistic Density**: Balanced resource placement across terrain
 
-**Performance Optimizations:**
-- **Early Termination**: Stops when target is reached
-- **Efficient Data Structures**: Binary heap for open set management
-- **Memory Optimization**: Reuses path nodes when possible
-- **Bounded Search**: Prevents infinite loops with reasonable search limits
+### Map Features
 
-**Path Features:**
-- **8-Directional Movement**: Supports cardinal and diagonal directions
-- **Optimal Pathfinding**: Guarantees shortest path when one exists
-- **Dynamic Updates**: Recalculates paths when obstacles change
-- **Smooth Navigation**: Provides step-by-step movement directions
+- **Configurable Size**: Default 100x100, customizable dimensions
+- **Seed-Based**: Reproducible worlds for testing and development
+- **Serialization**: Save/load maps in JSON format
+- **Boundary Management**: Proper edge handling for robot movement
 
-### Movement Directions
-```rust
-pub enum Direction {
-    North, South, East, West,           // Cardinal directions
-    NorthEast, NorthWest,               // Diagonal directions  
-    SouthEast, SouthWest
-}
-```
+## 🏭 Station & Information System
 
-## 🛠️ Shared Utilities
+### Central Station
 
-### SearchUtils Module
-Common search patterns used by all robot types:
+- **Robot Coordination**: Central hub for robot operations
+- **Energy Distribution**: Manages power supply for robot fleet
+- **Information Processing**: Handles robot discoveries and data
 
-- **`radius_search`**: Configurable radius-based position searching
-- **`find_nearest_resource`**: Locates closest resources of specified types
-- **`find_nearest_unexplored`**: Identifies unexplored areas for mapping
-- **`find_nearest_scientific_interest`**: Finds scientific points of interest
+### Git-Like Information Merging
 
-**Benefits:**
-- Eliminates code duplication across robot behaviors
-- Consistent search algorithms for all robot types
-- Optimized performance with shared implementations
-- Easy maintenance and feature updates
+- **Conflict Detection**: Identifies contradictory robot reports
+- **Automatic Resolution**: Intelligent merging of compatible information
+- **Conflict Types**:
+  - Resource amount differences (>20% variance)
+  - Resource type conflicts (Energy vs Mineral)
+  - Terrain mismatches (different terrain reports)
+  - Confidence conflicts (reliability differences)
 
-## 🎯 Robot Comparison
+### Knowledge Management
 
-| Feature | Explorer | Harvester | Scientist |
-|---------|----------|-----------|-----------|
-| **Energy Cost** | 2/action | 3/action | 4/action |
-| **Energy Threshold** | 20 | 15 | 25 |
-| **Primary Focus** | Exploration | Resource Collection | Scientific Analysis |
-| **Preferred Resources** | None | Energy, Mineral | Scientific Interest |
-| **Search Radius** | 5 units | 4 units | 6 units |
-| **Specialization** | Mapping | Harvesting | Research |
-| **Backup Behavior** | Random Exploration | Resource Exploration | Systematic Exploration |
+- **Location Tracking**: Maintains database of discovered positions
+- **Merge Statistics**: Tracks successful merges and conflicts
+- **Conflict Resolution**: Manual review system for serious conflicts
+- **Resource Estimates**: Provides exploration recommendations
 
-## 🏗️ System Architecture
+## 🛠️ Technical Implementation
 
-### Decision-Making Framework
-All robots follow a priority-based decision system:
+### Concurrent Architecture
 
-1. **Energy Management**: Monitor energy levels and return to station when needed
-2. **Resource Status**: Handle carrying capacity and resource delivery
-3. **Specialized Tasks**: Execute type-specific primary missions
-4. **Fallback Behavior**: Explore when primary objectives are unavailable
+- **Tokio Runtime**: Async/await for smooth simulation performance
+- **Non-Blocking TUI**: Real-time updates without freezing
+- **Parallel Processing**: Efficient robot state management
+- **Performance Optimized**: 500ms update cycles with 100ms render loops
 
-### Energy Management
-- **Dynamic Thresholds**: Each robot type has optimized energy thresholds
-- **Efficient Routing**: Pathfinding minimizes energy consumption
-- **Strategic Planning**: Robots plan return trips based on remaining energy
-- **Resource Optimization**: Balanced energy costs vs. capability benefits
+### Pathfinding System
 
-## 🧪 Testing and Quality
+- **A\* Algorithm**: Optimal pathfinding with Manhattan distance heuristic
+- **Overflow Protection**: Saturating arithmetic prevents panics
+- **Terrain Awareness**: Movement costs based on terrain difficulty
+- **Boundary Checking**: Safe navigation within map limits
 
-### Comprehensive Test Suite
-- **62 Unit Tests** covering all robot behaviors and pathfinding
-- **Behavior Verification**: Tests for each robot type's decision-making
-- **Pathfinding Tests**: A* algorithm correctness and performance
-- **Integration Tests**: Robot-environment interaction scenarios
-- **Edge Case Coverage**: Boundary conditions and error handling
+### Data Structures
 
-### Code Quality Features
-- **Clean Architecture**: Modular design with clear separation of concerns
-- **Rust Best Practices**: Memory safety and zero-cost abstractions
-- **Comprehensive Documentation**: Inline docs and behavior specifications
-- **Performance Optimized**: Efficient algorithms and data structures
+- **HashMap Resources**: Efficient sparse resource storage
+- **Vector Terrain**: Fast terrain lookup and modification
+- **Station Knowledge**: Comprehensive discovery tracking
+- **Conflict Management**: Structured conflict resolution system
+
+## 🧪 Quality Assurance
+
+### Comprehensive Testing
+
+- **87 Passing Tests**: Full coverage of core functionality
+- **Unit Tests**: Individual component verification
+- **Integration Tests**: System interaction validation
+- **Property-Based Tests**: Map generation consistency
+- **Performance Tests**: Concurrent simulation load testing
+
+### Code Quality
+
+- **Clean Linting**: Clippy and rustfmt compliance
+- **Memory Safety**: Rust's ownership system prevents common bugs
+- **Error Handling**: Comprehensive Result types and error propagation
+- **Documentation**: Inline docs and architectural decision records
 
 ## 🚀 Getting Started
 
-### Running the Simulation
+### Quick Start
+
 ```bash
-# Run the main simulation
-cargo run
+# Install Rust (if not already installed)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
+# Clone and run Nova
+git clone <repository-url>
+cd nova
+cargo run -- start
+
+# Follow the interactive setup:
+# - Seed: 42 (or any number for different worlds)
+# - Map Size: 100x100 (default)
+# - Robot Count: 25 (default)
+
+# Watch robots explore in real-time!
+# Press 'q' to quit when done
+```
+
+### Development Commands
+
+```bash
 # Run all tests
-cargo test
+make all
 
-# Run tests with output
-cargo test -- --nocapture
+# Format code
+cargo fmt
+
+# Run linter
+cargo clippy
+
+# Build release version
+cargo build --release
 
 # Run specific test module
-cargo test robot_ai::behaviors::explorer
+cargo test simulation::entities
 ```
 
-### Project Structure
-```
-src/
-├── simulation/
-│   ├── entities/          # Robot, Map, Station definitions
-│   └── robot_ai/          # AI system implementation
-│       ├── behavior.rs    # Behavior trait and factory
-│       ├── behaviors/     # Individual robot behaviors
-│       │   ├── explorer.rs
-│       │   ├── harvester.rs
-│       │   └── scientist.rs
-│       ├── pathfinding.rs # A* pathfinding algorithm
-│       ├── types.rs       # Task and type definitions
-│       └── utils.rs       # Shared utility functions
-└── main.rs               # Application entry point
+### Configuration Options
+
+```bash
+# Custom map size
+cargo run -- start
+> Map Width [100]: 50
+> Map Height [100]: 50
+
+# Different robot count
+> Robots Count [25]: 10
+
+# Custom seed for reproducible worlds
+> Seed [42]: 12345
 ```
 
-## 🔬 Scientific Approach
+## 📁 Project Structure
 
-The Nova system demonstrates advanced autonomous robotics concepts:
+```
+nova/
+├── src/
+│   ├── main.rs                 # Entry point with TUI simulation loop
+│   ├── cli/                    # Command-line interface
+│   ├── config/                 # Configuration management
+│   └── simulation/
+│       ├── entities.rs         # Robot, Station, Map core types
+│       ├── map.rs             # Perlin noise map generation
+│       ├── visualization.rs    # TUI rendering with ratatui
+│       ├── pathfinding.rs     # A* algorithm implementation
+│       ├── ai/                # Robot behavior systems
+│       └── engine.rs          # Concurrent simulation engine
+├── docs/
+│   └── adr/                   # Architecture Decision Records
+├── Makefile                   # Development commands
+└── Cargo.toml                 # Dependencies and metadata
+```
 
-- **Multi-Agent Systems**: Coordinated robot behaviors without central control
-- **Specialized AI**: Type-specific decision-making algorithms
-- **Efficient Pathfinding**: Optimal navigation in dynamic environments
-- **Resource Management**: Strategic energy and resource allocation
-- **Emergent Behavior**: Complex system behavior from simple robot rules
+## 🎯 Key Features Demonstrated
 
-## 📈 Future Enhancements
+### Real-Time Visualization
 
-- **Dynamic Task Assignment**: Inter-robot communication and task sharing
-- **Advanced Analysis Types**: Geological, Biological analysis capabilities
-- **Learning Algorithms**: Adaptive behavior based on environment feedback
-- **Multi-Objective Optimization**: Balanced exploration, harvesting, and research
-- **Real-time Visualization**: Interactive simulation monitoring and control
+- **Smooth Animation**: Watch robots move across terrain in real-time
+- **Resource Tracking**: See energy levels and resource distribution
+- **Interactive Interface**: Responsive TUI with immediate feedback
+
+### Advanced Data Management
+
+- **Information Conflicts**: Git-like merging when robots report different data
+- **Automatic Resolution**: Smart algorithms for compatible information
+- **Manual Review**: Human oversight for critical conflicts
+
+### Robust Architecture
+
+- **Concurrent Processing**: Multiple robots operating simultaneously
+- **Memory Efficient**: Optimized data structures for large simulations
+- **Error Resilient**: Comprehensive error handling and recovery
+
+## 🔬 Educational Value
+
+Nova demonstrates several important computer science concepts:
+
+- **Multi-Agent Systems**: Autonomous robots operating independently
+- **Real-Time Visualization**: Responsive user interfaces with complex data
+- **Procedural Generation**: Algorithmic world creation with Perlin noise
+- **Conflict Resolution**: Distributed system data consistency challenges
+- **Concurrent Programming**: Async/await patterns in Rust
+- **Clean Architecture**: Modular design with clear separation of concerns
+
+## 🎨 Visual Experience
+
+When you run Nova, you'll see:
+
+```
+=== NOVA SIMULATION ===
+Map: 100x100 | Robots: 25 | Station: (50,50)
+
+▲▲▲...^^^...EEE...▲▲▲...^^^...
+...^^^...MMM...^^^...SSS...^^^
+^^^...▲▲▲...^^^...EEE...^^^...
+...SSS...^^^...MMM...▲▲▲...^^^
+^^^...EEE...^^^...@...^^^...EEE
+...^^^...SSS...^^^...MMM...^^^
+▲▲▲...^^^...EEE...^^^...SSS...
+...MMM...^^^...▲▲▲...^^^...EEE
+
+Legend: . Plain  ^ Hill  ▲ Mountain  # Canyon
+Resources: E Energy  M Mineral  S Scientific
+Robots: X Explorer  H Harvester  S Scientist  @ Station
+
+Statistics: Size: 100x100 (10000 cells)
+Energy: 85407 units | Minerals: 71135 units
+Scientific: 29981 units | Robots: 25 active
+Energy: Total: 1847 | Avg: 73.9
+```
+
+## 🚧 Future Enhancements
+
+- **Smart Robot AI**: Replace random movement with intelligent exploration
+- **Resource Collection**: Implement actual harvesting mechanics
+- **Robot Communication**: Inter-robot coordination and task sharing
+- **Advanced Visualization**: 3D rendering or web-based interface
+- **Performance Metrics**: Detailed simulation analytics and reporting
+- **Scenario System**: Predefined challenges and objectives
 
 ---
 
-*Nova represents a sophisticated simulation of autonomous robot systems, showcasing modern Rust development practices and advanced algorithmic implementations.*
+_Nova showcases modern Rust development practices with real-time visualization, concurrent programming, and robust system architecture. Perfect for learning about multi-agent systems, procedural generation, and interactive terminal applications._
