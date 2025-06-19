@@ -113,7 +113,6 @@ impl Robot {
         if self.carrying.is_some() {
             return Err("Already carrying a resource");
         }
-
         if let Some(resource) = map.resources.remove(&(self.x, self.y)) {
             self.carrying = Some(resource);
             Ok(())

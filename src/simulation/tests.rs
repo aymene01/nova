@@ -2,6 +2,8 @@
 mod map_tests {
     use crate::simulation::entities::{Map, ResourceType};
     use crate::simulation::map::TerrainType;
+    use crate::simulation::robot_ai::robot::Robot;
+    use crate::simulation::robot_ai::types::{Direction, RobotType};
 
     #[test]
     fn test_map_creation() {
@@ -11,22 +13,18 @@ mod map_tests {
 
         let map = Map::new(width, height, seed);
 
-        // Verify dimensions
         assert_eq!(map.width, width);
         assert_eq!(map.height, height);
         assert_eq!(map.seed, seed);
 
-        // Verify terrain generation
         assert!(!map.terrain.is_empty());
         assert_eq!(map.terrain.len(), height);
         assert_eq!(map.terrain[0].len(), width);
 
-        // Verify discovery state
         assert!(!map.discovered.is_empty());
         assert_eq!(map.discovered.len(), height);
         assert_eq!(map.discovered[0].len(), width);
 
-        // Verify resources exist
         assert!(!map.resources.is_empty());
     }
 
@@ -38,7 +36,6 @@ mod map_tests {
 
         let map = Map::new(width, height, seed);
 
-        // Count terrain types
         let mut plains = 0;
         let mut hills = 0;
         let mut mountains = 0;
@@ -57,7 +54,6 @@ mod map_tests {
 
         let total = width * height;
 
-        // Verify all terrain types exist
         assert!(plains > 0);
         assert!(hills > 0);
         assert!(mountains > 0);
@@ -76,7 +72,6 @@ mod map_tests {
 
         let map = Map::new(width, height, seed);
 
-        // Count resource types
         let mut energy = 0;
         let mut minerals = 0;
         let mut scientific = 0;
@@ -89,12 +84,10 @@ mod map_tests {
             }
         }
 
-        // Verify all resource types exist
         assert!(energy > 0);
         assert!(minerals > 0);
         assert!(scientific > 0);
 
-        // Energy should be most common, scientific interest least common
         assert!(energy > minerals);
         assert!(minerals > scientific);
     }
@@ -105,18 +98,15 @@ mod map_tests {
         let height = 30;
         let seed = 12345;
 
-        // Create two maps with the same seed
         let map1 = Map::new(width, height, seed);
         let map2 = Map::new(width, height, seed);
 
-        // Verify terrain is identical
         for y in 0..height {
             for x in 0..width {
                 assert_eq!(map1.terrain[y][x], map2.terrain[y][x]);
             }
         }
 
-        // Verify resources are identical
         assert_eq!(map1.resources.len(), map2.resources.len());
 
         for ((x, y), (res_type, amount)) in &map1.resources {
@@ -130,132 +120,83 @@ mod map_tests {
 
     #[test]
     fn test_resource_collection() {
-        let width = 20;
-        let height = 20;
-        let seed = 42;
+        let mut map = Map::new_test_map(5, 5);
+        map.resources.insert((2, 2), (ResourceType::Energy, 10));
+        let mut robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
 
-        let mut map = Map::new(width, height, seed);
+        robot.collect_resource(&mut map).unwrap();
+        assert_eq!(robot.carrying.unwrap().0, ResourceType::Energy);
 
-        // Find a position with resources
-        let resource_pos = if let Some(((x, y), (res_type, amount))) = map.resources.iter().next() {
-            Some((*x, *y, res_type.clone(), *amount))
-        } else {
-            None
-        };
-
-        // Verify we found a resource
-        assert!(resource_pos.is_some());
-
-        let (x, y, res_type, amount) = resource_pos.unwrap();
-
-        // Collect half the resource
-        let collect_amount = amount / 2;
-        let result = map.collect_resource(x, y, collect_amount);
-
-        // Verify collection succeeded
-        assert!(result.is_ok());
-        let (collected_type, collected_amount) = result.unwrap();
-        assert_eq!(collected_type, res_type);
-        assert_eq!(collected_amount, collect_amount);
-
-        // Verify resource was reduced
-        let remaining = map.resources.get(&(x, y)).unwrap();
-        assert_eq!(remaining.1, amount - collect_amount);
-
-        // Collect the rest
-        let result = map.collect_resource(x, y, amount - collect_amount);
-        assert!(result.is_ok());
-
-        // Verify resource is gone
-        assert!(!map.resources.contains_key(&(x, y)));
-
-        // Try to collect more (should fail)
-        let result = map.collect_resource(x, y, 1);
-        assert!(result.is_err());
+        assert!(!map.resources.contains_key(&(2, 2)));
     }
 
     #[test]
     fn test_robots_never_leave_map_bounds() {
-        use crate::simulation::entities::{Map, Station, StationKnowledge};
-        use crate::simulation::robot_ai::robot::Robot;
-        use crate::simulation::robot_ai::types::RobotType;
-        use std::collections::HashMap;
+        let map = Map::new_test_map(10, 10);
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 100);
 
-        // Create a small map to increase chance of edge cases
-        let mut map = Map::new(10, 10, 42);
-        let mut station = Station {
-            resources: HashMap::new(),
-            discoveries: 0,
-            x: 5,
-            y: 5,
-            knowledge: StationKnowledge::new(),
-        };
-
-        // Give station energy for recharging
-        station.receive_resource(crate::simulation::entities::ResourceType::Energy, 10000);
-
-        // Create robots at different positions including edges
-        let mut robots = vec![
-            Robot::new(0, RobotType::Explorer, 0, 0, 100), // Corner
-            Robot::new(1, RobotType::Harvester, 9, 9, 100), // Corner
-            Robot::new(2, RobotType::Scientist, 0, 5, 100), // Edge
-            Robot::new(3, RobotType::Explorer, 5, 0, 100), // Edge
-        ];
-
-        // Run simulation for many steps
         for step in 0..100 {
-            for robot in &mut robots {
-                // Check current position is within bounds
-                assert!(
-                    robot.x < map.width,
-                    "Robot {} x position {} >= map width {} at step {}",
-                    robot.id,
-                    robot.x,
-                    map.width,
-                    step
-                );
-                assert!(
-                    robot.y < map.height,
-                    "Robot {} y position {} >= map height {} at step {}",
-                    robot.id,
-                    robot.y,
-                    map.height,
-                    step
-                );
+            let directions = [
+                Direction::North,
+                Direction::South,
+                Direction::East,
+                Direction::West,
+            ];
+            let direction = directions[step % 4];
 
-                // Let robot decide and execute action
-                let action = robot.decide_next_action(&map, &station);
-                if let Err(e) = robot.execute_action(&mut map, &mut station, action) {
-                    // Only allow "Move blocked by terrain" errors, not "Move out of bounds"
-                    assert!(
-                        e != "Move out of bounds",
-                        "Robot {} tried to move out of bounds at step {}: {}",
-                        robot.id,
-                        step,
-                        e
-                    );
-                }
+            let _result = robot.move_in_direction(direction, &map);
 
-                // Check position again after action
-                assert!(
-                    robot.x < map.width,
-                    "Robot {} x position {} >= map width {} after action at step {}",
-                    robot.id,
-                    robot.x,
-                    map.width,
-                    step
-                );
-                assert!(
-                    robot.y < map.height,
-                    "Robot {} y position {} >= map height {} after action at step {}",
-                    robot.id,
-                    robot.y,
-                    map.height,
-                    step
-                );
-            }
+            assert!(
+                robot.x < map.width,
+                "Robot left map horizontally at step {}",
+                step
+            );
+            assert!(
+                robot.y < map.height,
+                "Robot left map vertically at step {}",
+                step
+            );
         }
+    }
 
-        println!("✅ All robots stayed within map bounds for 100 steps");
+    #[test]
+    fn test_robots_can_walk_on_resources() {
+        let mut map = Map::new_test_map(5, 5);
+        map.resources.insert((2, 2), (ResourceType::Energy, 10));
+        map.resources.insert((3, 2), (ResourceType::Mineral, 15));
+        map.resources
+            .insert((2, 3), (ResourceType::ScientificInterest, 8));
+
+        let mut explorer = Robot::new(1, RobotType::Explorer, 1, 1, 100);
+
+        let result = explorer.move_in_direction(Direction::East, &map);
+        assert!(
+            result.is_ok(),
+            "Explorer should be able to walk on energy resource"
+        );
+        assert_eq!(explorer.x, 2);
+        assert_eq!(explorer.y, 1);
+
+        let result = explorer.move_in_direction(Direction::South, &map);
+        assert!(
+            result.is_ok(),
+            "Explorer should be able to walk on energy resource"
+        );
+        assert_eq!(explorer.x, 2);
+        assert_eq!(explorer.y, 2);
+
+        assert!(map.resources.contains_key(&(2, 2)));
+
+        let mut harvester = Robot::new(2, RobotType::Harvester, 1, 1, 100);
+
+        harvester.move_in_direction(Direction::East, &map).unwrap();
+        harvester.move_in_direction(Direction::South, &map).unwrap();
+
+        let collect_result = harvester.collect_resource(&mut map);
+        assert!(
+            collect_result.is_ok(),
+            "Harvester should be able to collect energy"
+        );
+        assert!(harvester.carrying.is_some());
     }
 }

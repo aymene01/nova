@@ -225,42 +225,6 @@ impl Map {
         Ok(self.resources.get(&(x, y)).cloned())
     }
 
-    /// Collects resources from the given position
-    /// Returns the type and amount of resources collected
-    pub fn collect_resource(
-        &mut self,
-        x: usize,
-        y: usize,
-        amount: u32,
-    ) -> MapResult<(ResourceType, u32)> {
-        if !self.is_position_valid(x, y) {
-            return Err(MapError::OutOfBounds(x, y));
-        }
-
-        // Get the resource if it exists
-        if let Some((resource_type, available_amount)) = self.resources.get(&(x, y)).cloned() {
-            if available_amount < amount {
-                return Err(MapError::InsufficientResources);
-            }
-
-            // Calculate the new amount
-            let new_amount = available_amount - amount;
-
-            // If the resource is depleted, remove it
-            if new_amount == 0 {
-                self.resources.remove(&(x, y));
-            } else {
-                // Otherwise update the resource amount
-                self.resources
-                    .insert((x, y), (resource_type.clone(), new_amount));
-            }
-
-            Ok((resource_type, amount))
-        } else {
-            Err(MapError::NoResourceAtPosition(x, y))
-        }
-    }
-
     /// Gets the map's seed
     pub fn get_seed(&self) -> u64 {
         self.seed
