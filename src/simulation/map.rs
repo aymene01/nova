@@ -235,21 +235,25 @@ impl Map {
         (self.width, self.height)
     }
 
-    /// Gets the movement cost for traversing the given terrain type
-    pub fn movement_cost(&self, terrain_type: TerrainType) -> u32 {
-        match terrain_type {
-            TerrainType::Plain => 1,
-            TerrainType::Hill => 2,
-            TerrainType::Mountain => 3,
-            TerrainType::Canyon => 4,
-        }
-    }
-
     /// Checks if the terrain at a position is traversable
     pub fn is_traversable(&self, x: usize, y: usize) -> MapResult<bool> {
-        // Check if the position is valid without storing the terrain
-        self.get_terrain(x, y)?;
-        // In this simulation, all terrain is traversable but at different costs
-        Ok(true)
+        let terrain_type = self.get_terrain(x, y)?;
+        Ok(terrain_type.is_traversable())
+    }
+}
+
+impl TerrainType {
+    /// Check if this terrain type is traversable by robots
+    pub fn is_traversable(&self) -> bool {
+        matches!(self, TerrainType::Plain | TerrainType::Hill)
+    }
+
+    /// Get the movement cost for this terrain type
+    pub fn movement_cost(&self) -> u32 {
+        match self {
+            TerrainType::Plain => 1,
+            TerrainType::Hill => 2,
+            TerrainType::Mountain | TerrainType::Canyon => 0, // Not traversable
+        }
     }
 }

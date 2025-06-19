@@ -174,6 +174,9 @@ mod map_tests {
             result.is_ok(),
             "Explorer should be able to walk on energy resource"
         );
+        if let Ok(movement_cost) = result {
+            explorer.consume_energy_for_movement(movement_cost).unwrap();
+        }
         assert_eq!(explorer.x, 2);
         assert_eq!(explorer.y, 1);
 
@@ -182,6 +185,9 @@ mod map_tests {
             result.is_ok(),
             "Explorer should be able to walk on energy resource"
         );
+        if let Ok(movement_cost) = result {
+            explorer.consume_energy_for_movement(movement_cost).unwrap();
+        }
         assert_eq!(explorer.x, 2);
         assert_eq!(explorer.y, 2);
 
@@ -189,8 +195,14 @@ mod map_tests {
 
         let mut harvester = Robot::new(2, RobotType::Harvester, 1, 1, 100);
 
-        harvester.move_in_direction(Direction::East, &map).unwrap();
-        harvester.move_in_direction(Direction::South, &map).unwrap();
+        let movement_cost = harvester.move_in_direction(Direction::East, &map).unwrap();
+        harvester
+            .consume_energy_for_movement(movement_cost)
+            .unwrap();
+        let movement_cost = harvester.move_in_direction(Direction::South, &map).unwrap();
+        harvester
+            .consume_energy_for_movement(movement_cost)
+            .unwrap();
 
         let collect_result = harvester.collect_resource(&mut map);
         assert!(
@@ -198,5 +210,65 @@ mod map_tests {
             "Harvester should be able to collect energy"
         );
         assert!(harvester.carrying.is_some());
+    }
+
+    #[test]
+    fn test_robots_can_walk_on_hills_with_extra_cost() {
+        use crate::simulation::robot_ai::robot::Robot;
+        use crate::simulation::robot_ai::types::{Direction, RobotType};
+
+        // Create a test map with hills
+        let mut map = Map::new_test_map(5, 5);
+        map.terrain[2][2] = 1; // Hill at center
+
+        // Test Explorer robot
+        let mut explorer = Robot::new(1, RobotType::Explorer, 2, 1, 100);
+        let initial_energy = explorer.energy();
+
+        // Move to hill position
+        let movement_cost = explorer.move_in_direction(Direction::South, &map).unwrap();
+        assert_eq!(movement_cost, 2); // Hill should cost 2
+        assert_eq!(explorer.x, 2);
+        assert_eq!(explorer.y, 2);
+
+        // Consume energy for movement
+        explorer.consume_energy_for_movement(movement_cost).unwrap();
+        assert_eq!(explorer.energy(), initial_energy - 3); // Base cost (2) + hill cost (1) = 3
+
+        // Test Harvester robot
+        let mut harvester = Robot::new(2, RobotType::Harvester, 1, 2, 100);
+        let initial_energy_harvester = harvester.energy();
+
+        // Move to hill position
+        let movement_cost = harvester.move_in_direction(Direction::East, &map).unwrap();
+        assert_eq!(movement_cost, 2); // Hill should cost 2
+        assert_eq!(harvester.x, 2);
+        assert_eq!(harvester.y, 2);
+
+        // Consume energy for movement
+        harvester
+            .consume_energy_for_movement(movement_cost)
+            .unwrap();
+        assert_eq!(harvester.energy(), initial_energy_harvester - 4); // Base cost (3) + hill cost (1) = 4
+    }
+
+    #[test]
+    fn test_robots_cannot_walk_on_mountains() {
+        use crate::simulation::robot_ai::robot::Robot;
+        use crate::simulation::robot_ai::types::{Direction, RobotType};
+
+        // Create a test map with mountains
+        let mut map = Map::new_test_map(5, 5);
+        map.terrain[2][2] = 2; // Mountain at center
+
+        // Test Explorer robot
+        let mut explorer = Robot::new(1, RobotType::Explorer, 2, 1, 100);
+
+        // Try to move to mountain position - should fail
+        let result = explorer.move_in_direction(Direction::South, &map);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Move blocked by terrain");
+        assert_eq!(explorer.x, 2);
+        assert_eq!(explorer.y, 1); // Position should not change
     }
 }

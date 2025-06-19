@@ -1,4 +1,5 @@
 use crate::simulation::entities::{Map, ResourceType, Station};
+use crate::simulation::map::TerrainType;
 use crate::simulation::robot_ai::behavior::RobotBehavior;
 use crate::simulation::robot_ai::executor::Executor;
 use crate::simulation::robot_ai::pathfinding::Pathfinder;
@@ -79,7 +80,7 @@ impl Robot {
         &mut self,
         direction: Direction,
         map: &Map,
-    ) -> Result<(), &'static str> {
+    ) -> Result<u32, &'static str> {
         let (dx, dy) = match direction {
             Direction::North => (0, -1),
             Direction::South => (0, 1),
@@ -99,14 +100,29 @@ impl Robot {
             return Err("Move out of bounds");
         }
 
-        // Additional safety check for terrain traversability
-        if map.terrain[new_y][new_x] != 0 {
+        // Check terrain traversability - allow movement on Plain (0) and Hill (1)
+        let terrain_type = TerrainType::from(map.terrain[new_y][new_x]);
+        if !terrain_type.is_traversable() {
             return Err("Move blocked by terrain");
         }
 
+        // Calculate movement cost based on terrain
+        let movement_cost = terrain_type.movement_cost();
+
         self.x = new_x;
         self.y = new_y;
-        Ok(())
+        Ok(movement_cost)
+    }
+
+    /// Consume energy based on terrain movement cost
+    pub fn consume_energy_for_movement(&mut self, movement_cost: u32) -> Result<(), &'static str> {
+        let total_cost = self.energy_consumption_rate() + movement_cost - 1; // -1 because base cost is already included in energy_consumption_rate
+        if self.energy >= total_cost {
+            self.energy -= total_cost;
+            Ok(())
+        } else {
+            Err("Insufficient energy for movement")
+        }
     }
 
     pub fn collect_resource(&mut self, map: &mut Map) -> Result<(), &'static str> {
@@ -137,7 +153,12 @@ impl Robot {
     pub fn energy_needed_to_return_to_station(&self, station: &Station) -> u32 {
         let station_pos = (station.x, station.y);
         let distance = Pathfinder::manhattan_distance_to(self.position(), station_pos);
-        let energy_per_move = self.energy_consumption_rate();
+
+        // Estimate energy cost with terrain factor
+        // Assume average terrain cost of 1.5 (mix of plains and hills)
+        let average_terrain_cost = 1.5;
+        let energy_per_move = self.energy_consumption_rate() + average_terrain_cost as u32 - 1;
+
         distance * energy_per_move
     }
 
@@ -167,7 +188,6 @@ impl Robot {
         action: Option<Task>,
     ) -> Result<(), &'static str> {
         if let Some(task) = action {
-            self.consume_energy()?;
             match task.task_type {
                 TaskType::Explore(explore_task) => {
                     Executor::execute_explore_task(self, map, explore_task)
@@ -184,6 +204,7 @@ impl Robot {
             }
         } else {
             // No action to execute, just consume minimal energy for being idle
+            self.consume_energy()?;
             Ok(())
         }
     }

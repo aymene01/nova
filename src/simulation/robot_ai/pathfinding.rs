@@ -1,4 +1,5 @@
 use crate::simulation::entities::Map;
+use crate::simulation::map::TerrainType;
 use crate::simulation::robot_ai::types::Direction;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
@@ -81,11 +82,16 @@ impl Pathfinder {
 
                 let neighbor = (new_x as usize, new_y as usize);
 
-                if map.terrain[neighbor.1][neighbor.0] != 0 {
+                // Check terrain traversability using TerrainType methods
+                let terrain_type = TerrainType::from(map.terrain[neighbor.1][neighbor.0]);
+                if !terrain_type.is_traversable() {
                     continue;
                 }
 
-                let tentative_g_score = g_score[&current.position] + 1;
+                // Calculate movement cost based on terrain
+                let movement_cost = terrain_type.movement_cost();
+
+                let tentative_g_score = g_score[&current.position] + movement_cost;
 
                 if tentative_g_score < *g_score.get(&neighbor).unwrap_or(&u32::MAX) {
                     came_from.insert(neighbor, current.position);
@@ -170,7 +176,9 @@ impl Pathfinder {
             let nx = new_x as usize;
             let ny = new_y as usize;
 
-            if map.terrain[ny][nx] == 0 {
+            // Allow movement on traversable terrain using TerrainType methods
+            let terrain_type = TerrainType::from(map.terrain[ny][nx]);
+            if terrain_type.is_traversable() {
                 valid_directions.push(direction);
             }
         }
@@ -201,7 +209,7 @@ mod tests {
         let mut map = create_test_map(width, height);
         for (x, y) in obstacles {
             if x < width && y < height {
-                map.terrain[y][x] = 1;
+                map.terrain[y][x] = 2; // Use Mountain (2) instead of Hill (1) for impassable obstacles
             }
         }
         map
@@ -276,10 +284,11 @@ mod tests {
         assert_eq!(path[path.len() - 1], goal);
 
         for &(x, y) in &path {
-            assert_eq!(
-                map.terrain[y][x], 0,
-                "Path goes through obstacle at ({}, {})",
-                x, y
+            assert!(
+                map.terrain[y][x] <= 1,
+                "Path goes through impassable terrain at ({}, {})",
+                x,
+                y
             );
         }
     }
@@ -431,7 +440,10 @@ mod tests {
         assert_eq!(path[path.len() - 1], goal);
 
         for &(x, y) in &path {
-            assert_eq!(map.terrain[y][x], 0, "Path should not go through obstacles");
+            assert!(
+                map.terrain[y][x] <= 1,
+                "Path should not go through impassable terrain"
+            );
         }
     }
 
@@ -467,11 +479,11 @@ mod tests {
     #[test]
     fn test_get_safe_random_direction_from_position_with_obstacles() {
         let mut map = create_test_map(5, 5);
-        // Add obstacles around position (2,2)
-        map.terrain[1][2] = 1; // North blocked
-        map.terrain[3][2] = 1; // South blocked
-        map.terrain[2][1] = 1; // West blocked
-        map.terrain[2][3] = 1; // East blocked
+        // Add obstacles around position (2,2) - use mountains (2) for impassable terrain
+        map.terrain[1][2] = 2; // North blocked
+        map.terrain[3][2] = 2; // South blocked
+        map.terrain[2][1] = 2; // West blocked
+        map.terrain[2][3] = 2; // East blocked
 
         let direction = Pathfinder::get_safe_random_direction_from_position(&map, 2, 2);
         assert!(

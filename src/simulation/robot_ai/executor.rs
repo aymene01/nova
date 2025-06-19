@@ -6,6 +6,25 @@ use crate::simulation::robot_ai::types::{AnalyzeTask, ExploreTask, HarvestTask, 
 pub struct Executor;
 
 impl Executor {
+    /// Helper method to move robot towards a target position
+    fn move_towards_target(
+        robot: &mut Robot,
+        map: &mut Map,
+        target_pos: (usize, usize),
+    ) -> Result<(), &'static str> {
+        let pathfinder = Pathfinder::new();
+        if let Some(direction) = pathfinder.get_next_move(robot.position(), target_pos, map) {
+            let movement_cost = robot.move_in_direction(direction, map)?;
+            robot.consume_energy_for_movement(movement_cost)?;
+        } else if let Some(random_direction) =
+            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
+        {
+            let movement_cost = robot.move_in_direction(random_direction, map)?;
+            robot.consume_energy_for_movement(movement_cost)?;
+        }
+        Ok(())
+    }
+
     pub fn execute_explore_task(
         robot: &mut Robot,
         map: &mut Map,
@@ -13,22 +32,16 @@ impl Executor {
     ) -> Result<(), &'static str> {
         robot.set_state(RobotState::Exploring);
         let target_pos: (usize, usize) = task.target_area;
-        if robot.position() == target_pos {
+        let current_pos = robot.position();
+
+        if current_pos == target_pos {
             robot.mark_area_as_discovered(map, target_pos, task.radius);
             return Ok(());
         }
-        let pathfinder = Pathfinder::new();
-        if let Some(direction) = pathfinder.get_next_move(robot.position(), target_pos, map) {
-            robot.move_in_direction(direction, map)?;
-            if robot.x < map.width && robot.y < map.height {
-                map.discovered[robot.y][robot.x] = true;
-            }
-        } else if let Some(random_direction) =
-            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
-        {
-            robot.move_in_direction(random_direction, map)?;
-        } else {
-            // println!("No path found to target area, using random direction for exploration");
+        Executor::move_towards_target(robot, map, target_pos)?;
+        // Mark current position as discovered for exploration tasks
+        if robot.x < map.width && robot.y < map.height {
+            map.discovered[robot.y][robot.x] = true;
         }
         Ok(())
     }
@@ -39,30 +52,22 @@ impl Executor {
         harvest_task: HarvestTask,
     ) -> Result<(), &'static str> {
         let target_pos = harvest_task.target_position;
+        let current_pos = robot.position();
+        let has_resource_at_position = map.resources.contains_key(&current_pos);
 
-        let should_harvest =
-            robot.position() == target_pos || map.resources.contains_key(&robot.position());
+        let should_harvest = current_pos == target_pos || has_resource_at_position;
 
         if should_harvest {
             robot.set_state(RobotState::Harvesting);
 
-            if map.resources.contains_key(&robot.position()) {
+            if has_resource_at_position {
                 robot.collect_resource(map)?;
             }
             return Ok(());
         }
 
         robot.set_state(RobotState::MovingToResource);
-        let pathfinder = Pathfinder::new();
-        if let Some(direction) = pathfinder.get_next_move(robot.position(), target_pos, map) {
-            robot.move_in_direction(direction, map)?;
-        } else if let Some(random_direction) =
-            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
-        {
-            robot.move_in_direction(random_direction, map)?;
-        } else {
-            // println!("No path found to target area, using random direction for harvest");
-        }
+        Executor::move_towards_target(robot, map, target_pos)?;
         Ok(())
     }
 
@@ -73,7 +78,9 @@ impl Executor {
     ) -> Result<(), &'static str> {
         robot.set_state(RobotState::Analyzing);
         let target_pos = analyze_task.target_position;
-        if robot.position() == target_pos {
+        let current_pos = robot.position();
+
+        if current_pos == target_pos {
             let should_collect = map
                 .resources
                 .get(&target_pos)
@@ -88,16 +95,7 @@ impl Executor {
             }
             return Ok(());
         }
-        let pathfinder = Pathfinder::new();
-        if let Some(direction) = pathfinder.get_next_move(robot.position(), target_pos, map) {
-            robot.move_in_direction(direction, map)?;
-        } else if let Some(random_direction) =
-            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
-        {
-            robot.move_in_direction(random_direction, map)?;
-        } else {
-            // println!("No path found to target area, using random direction for analyze");
-        }
+        Executor::move_towards_target(robot, map, target_pos)?;
         Ok(())
     }
 
@@ -108,11 +106,13 @@ impl Executor {
     ) -> Result<(), &'static str> {
         robot.set_state(RobotState::ReturningToStation);
         let station_pos = (station.x, station.y);
-        if robot.position() == station_pos {
+        let current_pos = robot.position();
+
+        if current_pos == station_pos {
             if robot.carrying.is_some() {
                 robot.deliver_resource(station)?;
             }
-            if station.robot_at_station(robot.position()) {
+            if station.robot_at_station(current_pos) {
                 if station.can_recharge() {
                     match station.recharge_robot(robot) {
                         Ok(_energy_given) => {
@@ -129,18 +129,7 @@ impl Executor {
             robot.set_state(RobotState::Idle);
             return Ok(());
         }
-        let pathfinder = Pathfinder::new();
-        if let Some(direction) = pathfinder.get_next_move(robot.position(), station_pos, map) {
-            robot.move_in_direction(direction, map)?;
-        } else if let Some(random_direction) =
-            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
-        {
-            robot.move_in_direction(random_direction, map)?;
-        } else {
-            // println!(
-            //     "No path found to target area, using random direction for return to station"
-            // );
-        }
+        Executor::move_towards_target(robot, map, station_pos)?;
         Ok(())
     }
 }

@@ -688,11 +688,13 @@ mod tests {
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 50);
 
         let result = robot.move_in_direction(Direction::North, &Map::new_test_map(10, 10));
-        robot.consume_energy().unwrap();
-
         assert!(result.is_ok());
+        if let Ok(movement_cost) = result {
+            robot.consume_energy_for_movement(movement_cost).unwrap();
+        }
+
         assert_eq!(robot.position(), (5, 4)); // North reduces Y
-        assert_eq!(robot.energy(), 50 - robot.energy_consumption_rate());
+        assert_eq!(robot.energy(), 50 - robot.energy_consumption_rate()); // Base cost only for plain terrain
     }
 
     #[test]
