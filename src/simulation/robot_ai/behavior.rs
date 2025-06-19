@@ -1,14 +1,17 @@
-use crate::simulation::entities::{Map, ResourceType, Robot, RobotType, Station};
+use crate::simulation::entities::{Map, ResourceType, Station};
 use crate::simulation::robot_ai::behaviors::{
     ExplorerBehavior, HarvesterBehavior, ScientistBehavior,
 };
-use crate::simulation::robot_ai::types::Task;
+use crate::simulation::robot_ai::robot::Robot;
+use crate::simulation::robot_ai::types::{RobotType, Task};
 
 #[allow(dead_code)]
-pub trait RobotBehavior {
+pub trait RobotBehavior: Send + Sync {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task>;
     fn get_preferred_resources(&self) -> Vec<ResourceType>;
     fn get_energy_consumption_rate(&self) -> u32;
+    fn get_max_energy(&self) -> u32;
+    fn get_low_energy_threshold(&self) -> u32;
     fn can_perform_task(&self, task: &Task) -> bool;
 }
 
@@ -24,19 +27,22 @@ pub fn create_behavior(robot_type: &RobotType) -> Box<dyn RobotBehavior> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::simulation::entities::StationKnowledge;
     use crate::simulation::robot_ai::types::{
-        AnalysisType, AnalyzeTask, ExploreTask, HarvestTask, TaskType,
+        AnalysisType, AnalyzeTask, ExploreTask, HarvestTask, RobotState, TaskType,
     };
     use std::collections::HashMap;
 
     fn create_test_robot(robot_type: RobotType, x: usize, y: usize, energy: u32) -> Robot {
         Robot {
             id: 1,
-            robot_type,
+            robot_type: robot_type.clone(),
             x,
             y,
             energy,
             carrying: None,
+            state: RobotState::Idle,
+            behavior: create_behavior(&robot_type),
         }
     }
 
@@ -46,6 +52,7 @@ mod tests {
             discoveries: 0,
             x: 5,
             y: 5,
+            knowledge: StationKnowledge::new(),
         }
     }
 

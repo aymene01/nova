@@ -3,11 +3,11 @@ use std::time::Duration;
 use tokio::sync::{Mutex, RwLock, mpsc};
 use tokio::time;
 
-use crate::simulation::ai::RobotExecutor;
-use crate::simulation::entities::{Map, Robot, RobotState, RobotType, Station};
+use crate::simulation::entities::{Map, Station};
+use crate::simulation::robot_ai::robot::Robot;
+use crate::simulation::robot_ai::types::{RobotState, RobotType};
 
 /// Commands that can be sent to the simulation engine
-#[derive(Debug)]
 #[allow(dead_code)]
 pub enum SimulationCommand {
     AddRobot(Robot),
@@ -81,10 +81,9 @@ pub struct SimulationEngine {
     map: Arc<RwLock<Map>>,
     station: Arc<Mutex<Station>>,
     robots: Arc<Mutex<Vec<Robot>>>,
-    executor: Arc<RobotExecutor>,
     command_rx: mpsc::Receiver<SimulationCommand>,
     status_tx: mpsc::Sender<SimulationStatus>,
-    robots_tx: mpsc::Sender<Vec<Robot>>,
+    robots_tx: mpsc::Sender<Vec<usize>>,
     is_running: Arc<Mutex<bool>>,
     tick_count: Arc<Mutex<u64>>,
     start_time: std::time::Instant,
@@ -102,7 +101,7 @@ impl SimulationEngine {
         Self,
         mpsc::Sender<SimulationCommand>,
         mpsc::Receiver<SimulationStatus>,
-        mpsc::Receiver<Vec<Robot>>,
+        mpsc::Receiver<Vec<usize>>,
     ) {
         let (command_tx, command_rx) = mpsc::channel(100);
         let (status_tx, status_rx) = mpsc::channel(10);
@@ -112,7 +111,6 @@ impl SimulationEngine {
             map: Arc::new(RwLock::new(map)),
             station: Arc::new(Mutex::new(station)),
             robots: Arc::new(Mutex::new(robots)),
-            executor: Arc::new(RobotExecutor::new()),
             command_rx,
             status_tx,
             robots_tx,
@@ -168,8 +166,9 @@ impl SimulationEngine {
                             let _ = self.status_tx.send(metrics.status).await;
                         }
                         SimulationCommand::GetRobots => {
-                            let robots = self.robots.lock().await.clone();
-                            let _ = self.robots_tx.send(robots).await;
+                            let robots_guard = self.robots.lock().await;
+                            let robot_ids: Vec<usize> = robots_guard.iter().map(|r| r.id).collect();
+                            let _ = self.robots_tx.send(robot_ids).await;
                         }
                         SimulationCommand::SetTickRate(rate) => {
                             tick_interval = time::interval(Duration::from_millis(rate));
@@ -193,28 +192,28 @@ impl SimulationEngine {
     async fn process_simulation_tick(
         &self,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let robots = {
+        // Get robot IDs to process
+        let robot_ids: Vec<usize> = {
             let robots_guard = self.robots.lock().await;
-            robots_guard.clone()
+            robots_guard.iter().map(|r| r.id).collect()
         };
 
-        if robots.is_empty() {
+        if robot_ids.is_empty() {
             return Ok(());
         }
 
-        // Process robots in parallel batches to avoid lock contention
-        let batch_size = (robots.len() / 4).max(1); // At most 4 concurrent batches
+        // Process robots by ID to avoid borrowing issues
+        let batch_size = (robot_ids.len() / 4).max(1);
         let mut handles = Vec::new();
 
-        for chunk in robots.chunks(batch_size) {
-            let robots_chunk = chunk.to_vec();
+        for chunk in robot_ids.chunks(batch_size) {
             let map = Arc::clone(&self.map);
             let station = Arc::clone(&self.station);
-            let executor = Arc::clone(&self.executor);
             let robots_store = Arc::clone(&self.robots);
+            let chunk_ids = chunk.to_vec();
 
             let handle = tokio::spawn(async move {
-                Self::process_robot_batch(robots_chunk, map, station, executor, robots_store).await
+                Self::process_robot_batch_by_ids(&chunk_ids, map, station, robots_store).await
             });
 
             handles.push(handle);
@@ -231,37 +230,28 @@ impl SimulationEngine {
         Ok(())
     }
 
-    /// Process a batch of robots concurrently
-    async fn process_robot_batch(
-        robots: Vec<Robot>,
+    /// Process a batch of robots by their IDs
+    async fn process_robot_batch_by_ids(
+        robot_ids: &[usize],
         map: Arc<RwLock<Map>>,
         station: Arc<Mutex<Station>>,
-        executor: Arc<RobotExecutor>,
         robots_store: Arc<Mutex<Vec<Robot>>>,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        for robot in robots {
-            // Read map (multiple readers allowed)
-            let map_guard = map.read().await;
-            let map_ref = &*map_guard;
-
-            // Process robot with current state
-            let mut robot_copy = robot.clone();
-            let mut station_guard = station.lock().await;
-
-            let result =
-                executor.execute_action_with_station(&mut robot_copy, map_ref, &mut station_guard);
-
-            drop(station_guard);
-            drop(map_guard);
-
-            if let Err(e) = result {
-                log::warn!("Robot {} action failed: {}", robot.id, e);
-            }
-
-            // Update robot in store
+        for &robot_id in robot_ids {
+            // Get the robot from the store
             let mut robots_guard = robots_store.lock().await;
-            if let Some(stored_robot) = robots_guard.iter_mut().find(|r| r.id == robot.id) {
-                *stored_robot = robot_copy;
+            if let Some(robot) = robots_guard.iter_mut().find(|r| r.id == robot_id) {
+                // Get write lock for map and lock station
+                let mut map_guard = map.write().await;
+                let mut station_guard = station.lock().await;
+
+                // Get the next action for the robot
+                let action = robot.decide_next_action(&map_guard, &station_guard);
+
+                // Execute the action
+                if let Err(e) = robot.execute_action(&mut map_guard, &mut station_guard, action) {
+                    log::warn!("Robot {} action failed: {}", robot_id, e);
+                }
             }
         }
 
@@ -362,6 +352,7 @@ impl SimulationEngine {
                     working_robots += 1
                 }
                 RobotState::ReturningToStation => returning_robots += 1,
+                _ => (),
             }
         }
 
@@ -427,7 +418,7 @@ pub async fn create_basic_simulation(
     SimulationEngine,
     mpsc::Sender<SimulationCommand>,
     mpsc::Receiver<SimulationStatus>,
-    mpsc::Receiver<Vec<Robot>>,
+    mpsc::Receiver<Vec<usize>>,
 ) {
     use crate::simulation::entities::Map;
 

@@ -1,5 +1,6 @@
-use crate::simulation::entities::{Map, ResourceType, Robot, Station};
+use crate::simulation::entities::{Map, ResourceType, Station};
 use crate::simulation::robot_ai::behavior::RobotBehavior;
+use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::{ExploreTask, Task, TaskType};
 use crate::simulation::robot_ai::utils::SearchUtils;
 
@@ -7,7 +8,7 @@ pub struct ExplorerBehavior;
 
 impl RobotBehavior for ExplorerBehavior {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task> {
-        if robot.energy < 20 || robot.carrying.is_some() {
+        if robot.carrying.is_some() || robot.is_low_energy() {
             return Some(Task {
                 task_type: TaskType::ReturnToStation,
                 target_position: Some((station.x, station.y)),
@@ -46,6 +47,14 @@ impl RobotBehavior for ExplorerBehavior {
 
     fn get_energy_consumption_rate(&self) -> u32 {
         2
+    }
+
+    fn get_max_energy(&self) -> u32 {
+        100
+    }
+
+    fn get_low_energy_threshold(&self) -> u32 {
+        20
     }
 
     fn can_perform_task(&self, task: &Task) -> bool {
@@ -89,9 +98,9 @@ impl ExplorerBehavior {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::entities::{Map, ResourceType, Robot, RobotType, Station};
+    use crate::simulation::entities::{Map, ResourceType, Station, StationKnowledge};
     use crate::simulation::robot_ai::types::{
-        AnalysisType, AnalyzeTask, ExploreTask, HarvestTask, Task, TaskType,
+        AnalysisType, AnalyzeTask, ExploreTask, HarvestTask, RobotState, RobotType, Task, TaskType,
     };
     use std::collections::HashMap;
 
@@ -103,6 +112,8 @@ mod tests {
             y,
             energy,
             carrying: None,
+            state: RobotState::Idle,
+            behavior: Box::new(ExplorerBehavior),
         }
     }
 
@@ -112,6 +123,7 @@ mod tests {
             discoveries: 0,
             x: 5,
             y: 5,
+            knowledge: StationKnowledge::new(),
         }
     }
 

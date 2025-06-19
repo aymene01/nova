@@ -1,6 +1,13 @@
 use crate::simulation::entities::ResourceType;
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum RobotType {
+    Explorer,
+    Harvester,
+    Scientist,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 #[allow(dead_code)]
 pub enum RobotState {
     Idle,
@@ -59,10 +66,6 @@ pub enum Direction {
     South,
     East,
     West,
-    Northeast,
-    Northwest,
-    Southeast,
-    Southwest,
 }
 
 #[allow(dead_code)]
@@ -73,10 +76,6 @@ impl Direction {
             Direction::South => (0, 1),
             Direction::East => (1, 0),
             Direction::West => (-1, 0),
-            Direction::Northeast => (1, -1),
-            Direction::Northwest => (-1, -1),
-            Direction::Southeast => (1, 1),
-            Direction::Southwest => (-1, 1),
         }
     }
 
@@ -86,10 +85,6 @@ impl Direction {
             Direction::South,
             Direction::East,
             Direction::West,
-            Direction::Northeast,
-            Direction::Northwest,
-            Direction::Southeast,
-            Direction::Southwest,
         ]
     }
 }

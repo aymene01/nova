@@ -2,14 +2,16 @@ mod cli;
 mod config;
 mod simulation;
 
-use crate::simulation::entities::{Direction, Map, Robot, RobotType, Station};
+use crate::simulation::entities::{Map, Station};
+use crate::simulation::robot_ai::robot::Robot;
+use crate::simulation::robot_ai::types::RobotType;
+
 use config::Config;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use rand::Rng;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 use std::time::{Duration, Instant};
@@ -32,7 +34,7 @@ async fn start_simulation(config: Config) {
     println!("  Robots: {}", config.robots_count);
 
     // Create map and station
-    let map = Map::new(config.map_width, config.map_height, config.seed);
+    let mut map = Map::new(config.map_width, config.map_height, config.seed);
     let mut station = Station::new(config.map_width / 2, config.map_height / 2);
 
     // Give station initial energy for recharging robots
@@ -49,17 +51,17 @@ async fn start_simulation(config: Config) {
 
         // Start robots in a large circle around the station
         let station_pos = station.position();
-        let angle = (i as f64) * 2.0 * std::f64::consts::PI / (config.robots_count as f64);
-        let radius = 8.0;
+        // let angle = (i as f64) * 2.0 * std::f64::consts::PI / (config.robots_count as f64);
+        // let radius = 8.0;
 
-        let robot_x = (station_pos.0 as f64 + radius * angle.cos()).round() as usize;
-        let robot_y = (station_pos.1 as f64 + radius * angle.sin()).round() as usize;
+        // let robot_x = (station_pos.0 as f64 + radius * angle.cos()).round() as usize;
+        // let robot_y = (station_pos.1 as f64 + radius * angle.sin()).round() as usize;
 
-        // Ensure robot position is within map bounds with padding
-        let robot_x = robot_x.min(config.map_width - 2).max(1);
-        let robot_y = robot_y.min(config.map_height - 2).max(1);
+        // // Ensure robot position is within map bounds with padding
+        // let robot_x = robot_x.min(config.map_width - 2).max(1);
+        // let robot_y = robot_y.min(config.map_height - 2).max(1);
 
-        let robot = Robot::new(i, robot_type, robot_x, robot_y, 100);
+        let robot = Robot::new(i, robot_type, station_pos.0, station_pos.1, 100);
         robots.push(robot);
     }
 
@@ -83,39 +85,15 @@ async fn start_simulation(config: Config) {
 
     // Simple simulation loop with RANDOM MOVEMENT + PERSISTENT TUI
     let mut last_update = Instant::now();
-    let mut rng = rand::rng();
 
     let result = loop {
         // Update robots every 500ms
         if last_update.elapsed() >= Duration::from_millis(500) {
-            // Move each robot randomly
             for robot in &mut robots {
-                // MUCH more forgiving recharge system - recharge all robots every tick
-                if robot.energy() < 50 {
-                    robot.recharge(20); // Direct recharge without station dependency
-                }
+                let action = robot.decide_next_action(&map, &station);
 
-                // Move robot (much lower energy threshold)
-                if robot.energy() > 1 {
-                    // Always move randomly - no complex pathfinding
-                    let direction = match rng.random_range(0..4) {
-                        0 => Direction::North,
-                        1 => Direction::South,
-                        2 => Direction::East,
-                        _ => Direction::West,
-                    };
-
-                    // Try to move the robot
-                    if robot.move_in_direction(direction).is_err() {
-                        // If movement failed (hit boundary), try a different direction
-                        let fallback_direction = match rng.random_range(0..4) {
-                            0 => Direction::North,
-                            1 => Direction::South,
-                            2 => Direction::East,
-                            _ => Direction::West,
-                        };
-                        let _ = robot.move_in_direction(fallback_direction);
-                    }
+                if let Err(e) = robot.execute_action(&mut map, &mut station, action) {
+                    eprintln!("Robot {} failed to execute action: {}", robot.id, e);
                 }
             }
 

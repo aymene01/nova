@@ -1,5 +1,6 @@
-use crate::simulation::entities::{Map, ResourceType, Robot, Station};
+use crate::simulation::entities::{Map, ResourceType, Station};
 use crate::simulation::robot_ai::behavior::RobotBehavior;
+use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::{AnalysisType, AnalyzeTask, ExploreTask, Task, TaskType};
 use crate::simulation::robot_ai::utils::SearchUtils;
 
@@ -7,7 +8,7 @@ pub struct ScientistBehavior;
 
 impl RobotBehavior for ScientistBehavior {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task> {
-        if robot.carrying.is_some() || robot.energy < 25 {
+        if robot.carrying.is_some() || robot.is_low_energy() {
             return Some(Task {
                 task_type: TaskType::ReturnToStation,
                 target_position: Some((station.x, station.y)),
@@ -46,6 +47,14 @@ impl RobotBehavior for ScientistBehavior {
 
     fn get_energy_consumption_rate(&self) -> u32 {
         4
+    }
+
+    fn get_max_energy(&self) -> u32 {
+        100
+    }
+
+    fn get_low_energy_threshold(&self) -> u32 {
+        25
     }
 
     fn can_perform_task(&self, task: &Task) -> bool {
@@ -114,9 +123,9 @@ impl ScientistBehavior {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::entities::{Map, ResourceType, Robot, RobotType, Station};
+    use crate::simulation::entities::{Map, ResourceType, Station, StationKnowledge};
     use crate::simulation::robot_ai::types::{
-        AnalysisType, AnalyzeTask, HarvestTask, Task, TaskType,
+        AnalysisType, AnalyzeTask, HarvestTask, RobotState, RobotType, Task, TaskType,
     };
     use std::collections::HashMap;
 
@@ -128,6 +137,8 @@ mod tests {
             y,
             energy,
             carrying: None,
+            state: RobotState::Idle,
+            behavior: Box::new(ScientistBehavior),
         }
     }
 
@@ -137,6 +148,7 @@ mod tests {
             discoveries: 0,
             x: 5,
             y: 5,
+            knowledge: StationKnowledge::new(),
         }
     }
 

@@ -128,10 +128,6 @@ impl Pathfinder {
                     (0, 1) => Some(Direction::South),
                     (1, 0) => Some(Direction::East),
                     (-1, 0) => Some(Direction::West),
-                    (1, -1) => Some(Direction::Northeast),
-                    (-1, -1) => Some(Direction::Northwest),
-                    (1, 1) => Some(Direction::Southeast),
-                    (-1, 1) => Some(Direction::Southwest),
                     _ => None,
                 }
             } else {
@@ -139,6 +135,45 @@ impl Pathfinder {
             }
         } else {
             None
+        }
+    }
+
+    pub fn manhattan_distance_to(current: (usize, usize), target: (usize, usize)) -> u32 {
+        let dx = if current.0 > target.0 {
+            current.0 - target.0
+        } else {
+            target.0 - current.0
+        };
+        let dy = if current.1 > target.1 {
+            current.1 - target.1
+        } else {
+            target.1 - current.1
+        };
+        (dx + dy) as u32
+    }
+
+    pub fn get_safe_random_direction(map: &Map) -> Option<Direction> {
+        let mut valid_directions = Vec::new();
+        let x = map.width / 2;
+        let y = map.height / 2;
+        for direction in Direction::all() {
+            let (dx, dy) = direction.to_delta();
+            let new_x = x as i32 + dx;
+            let new_y = y as i32 + dy;
+            if new_x < 0 || new_y < 0 || new_x >= map.width as i32 || new_y >= map.height as i32 {
+                continue;
+            }
+            let nx = new_x as usize;
+            let ny = new_y as usize;
+            if map.terrain[ny][nx] == 0 {
+                valid_directions.push(direction);
+            }
+        }
+        if valid_directions.is_empty() {
+            None
+        } else {
+            let index = (rand::random::<f32>() * valid_directions.len() as f32) as usize;
+            valid_directions.get(index).copied()
         }
     }
 }
@@ -311,24 +346,6 @@ mod tests {
     }
 
     #[test]
-    fn test_get_next_move_diagonal_directions() {
-        let pathfinder = Pathfinder::new();
-        let current = (2, 2);
-
-        let direction = pathfinder.get_next_move(current, (3, 1), &create_test_map(5, 5));
-        assert_eq!(direction, Some(Direction::Northeast));
-
-        let direction = pathfinder.get_next_move(current, (1, 1), &create_test_map(5, 5));
-        assert_eq!(direction, Some(Direction::Northwest));
-
-        let direction = pathfinder.get_next_move(current, (3, 3), &create_test_map(5, 5));
-        assert_eq!(direction, Some(Direction::Southeast));
-
-        let direction = pathfinder.get_next_move(current, (1, 3), &create_test_map(5, 5));
-        assert_eq!(direction, Some(Direction::Southwest));
-    }
-
-    #[test]
     fn test_get_next_move_distant_target() {
         let pathfinder = Pathfinder::new();
         let current = (1, 1);
@@ -337,7 +354,7 @@ mod tests {
         let direction = pathfinder.get_next_move(current, target, &create_test_map(6, 6));
 
         assert!(direction.is_some());
-        assert_eq!(direction, Some(Direction::Southeast));
+        assert_eq!(direction, Some(Direction::South));
     }
 
     #[test]
