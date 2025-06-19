@@ -173,4 +173,89 @@ mod map_tests {
         let result = map.collect_resource(x, y, 1);
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_robots_never_leave_map_bounds() {
+        use crate::simulation::entities::{Map, Station, StationKnowledge};
+        use crate::simulation::robot_ai::robot::Robot;
+        use crate::simulation::robot_ai::types::RobotType;
+        use std::collections::HashMap;
+
+        // Create a small map to increase chance of edge cases
+        let mut map = Map::new(10, 10, 42);
+        let mut station = Station {
+            resources: HashMap::new(),
+            discoveries: 0,
+            x: 5,
+            y: 5,
+            knowledge: StationKnowledge::new(),
+        };
+
+        // Give station energy for recharging
+        station.receive_resource(crate::simulation::entities::ResourceType::Energy, 10000);
+
+        // Create robots at different positions including edges
+        let mut robots = vec![
+            Robot::new(0, RobotType::Explorer, 0, 0, 100), // Corner
+            Robot::new(1, RobotType::Harvester, 9, 9, 100), // Corner
+            Robot::new(2, RobotType::Scientist, 0, 5, 100), // Edge
+            Robot::new(3, RobotType::Explorer, 5, 0, 100), // Edge
+        ];
+
+        // Run simulation for many steps
+        for step in 0..100 {
+            for robot in &mut robots {
+                // Check current position is within bounds
+                assert!(
+                    robot.x < map.width,
+                    "Robot {} x position {} >= map width {} at step {}",
+                    robot.id,
+                    robot.x,
+                    map.width,
+                    step
+                );
+                assert!(
+                    robot.y < map.height,
+                    "Robot {} y position {} >= map height {} at step {}",
+                    robot.id,
+                    robot.y,
+                    map.height,
+                    step
+                );
+
+                // Let robot decide and execute action
+                let action = robot.decide_next_action(&map, &station);
+                if let Err(e) = robot.execute_action(&mut map, &mut station, action) {
+                    // Only allow "Move blocked by terrain" errors, not "Move out of bounds"
+                    assert!(
+                        e != "Move out of bounds",
+                        "Robot {} tried to move out of bounds at step {}: {}",
+                        robot.id,
+                        step,
+                        e
+                    );
+                }
+
+                // Check position again after action
+                assert!(
+                    robot.x < map.width,
+                    "Robot {} x position {} >= map width {} after action at step {}",
+                    robot.id,
+                    robot.x,
+                    map.width,
+                    step
+                );
+                assert!(
+                    robot.y < map.height,
+                    "Robot {} y position {} >= map height {} after action at step {}",
+                    robot.id,
+                    robot.y,
+                    map.height,
+                    step
+                );
+            }
+        }
+
+        println!("✅ All robots stayed within map bounds for 100 steps");
+    }
 }

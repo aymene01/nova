@@ -60,7 +60,6 @@ pub enum AnalysisType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-#[allow(dead_code)]
 pub enum Direction {
     North,
     South,
@@ -68,7 +67,6 @@ pub enum Direction {
     West,
 }
 
-#[allow(dead_code)]
 impl Direction {
     pub fn to_delta(self) -> (i32, i32) {
         match self {

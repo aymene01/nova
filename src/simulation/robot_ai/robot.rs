@@ -4,7 +4,6 @@ use crate::simulation::robot_ai::executor::Executor;
 use crate::simulation::robot_ai::pathfinding::Pathfinder;
 use crate::simulation::robot_ai::types::{Direction, RobotState, RobotType, Task, TaskType};
 
-#[allow(dead_code)]
 pub struct Robot {
     pub id: usize,
     pub robot_type: RobotType,
@@ -98,6 +97,11 @@ impl Robot {
             || new_y >= map.height
         {
             return Err("Move out of bounds");
+        }
+
+        // Additional safety check for terrain traversability
+        if map.terrain[new_y][new_x] != 0 {
+            return Err("Move blocked by terrain");
         }
 
         self.x = new_x;

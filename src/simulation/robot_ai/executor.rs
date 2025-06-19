@@ -23,10 +23,12 @@ impl Executor {
             if robot.x < map.width && robot.y < map.height {
                 map.discovered[robot.y][robot.x] = true;
             }
-        } else if let Some(random_direction) = Pathfinder::get_safe_random_direction(map) {
+        } else if let Some(random_direction) =
+            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
+        {
             robot.move_in_direction(random_direction, map)?;
         } else {
-            // println!("No path found to target area, using random direction for exploration");
+            println!("No path found to target area, using random direction for exploration");
         }
         Ok(())
     }
@@ -46,7 +48,9 @@ impl Executor {
         let pathfinder = Pathfinder::new();
         if let Some(direction) = pathfinder.get_next_move(robot.position(), target_pos, map) {
             robot.move_in_direction(direction, map)?;
-        } else if let Some(random_direction) = Pathfinder::get_safe_random_direction(map) {
+        } else if let Some(random_direction) =
+            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
+        {
             robot.move_in_direction(random_direction, map)?;
         } else {
             // println!("No path found to target area, using random direction for harvest");
@@ -79,7 +83,9 @@ impl Executor {
         let pathfinder = Pathfinder::new();
         if let Some(direction) = pathfinder.get_next_move(robot.position(), target_pos, map) {
             robot.move_in_direction(direction, map)?;
-        } else if let Some(random_direction) = Pathfinder::get_safe_random_direction(map) {
+        } else if let Some(random_direction) =
+            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
+        {
             robot.move_in_direction(random_direction, map)?;
         } else {
             // println!("No path found to target area, using random direction for analyze");
@@ -118,7 +124,9 @@ impl Executor {
         let pathfinder = Pathfinder::new();
         if let Some(direction) = pathfinder.get_next_move(robot.position(), station_pos, map) {
             robot.move_in_direction(direction, map)?;
-        } else if let Some(random_direction) = Pathfinder::get_safe_random_direction(map) {
+        } else if let Some(random_direction) =
+            Pathfinder::get_safe_random_direction_from_position(map, robot.x, robot.y)
+        {
             robot.move_in_direction(random_direction, map)?;
         } else {
             // println!(

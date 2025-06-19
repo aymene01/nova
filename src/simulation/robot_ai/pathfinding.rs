@@ -3,7 +3,6 @@ use crate::simulation::robot_ai::types::Direction;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
-#[allow(dead_code)]
 pub struct Pathfinder;
 
 #[allow(dead_code)]
@@ -152,23 +151,30 @@ impl Pathfinder {
         (dx + dy) as u32
     }
 
-    pub fn get_safe_random_direction(map: &Map) -> Option<Direction> {
+    pub fn get_safe_random_direction_from_position(
+        map: &Map,
+        current_x: usize,
+        current_y: usize,
+    ) -> Option<Direction> {
         let mut valid_directions = Vec::new();
-        let x = map.width / 2;
-        let y = map.height / 2;
+
         for direction in Direction::all() {
             let (dx, dy) = direction.to_delta();
-            let new_x = x as i32 + dx;
-            let new_y = y as i32 + dy;
+            let new_x = current_x as i32 + dx;
+            let new_y = current_y as i32 + dy;
+
             if new_x < 0 || new_y < 0 || new_x >= map.width as i32 || new_y >= map.height as i32 {
                 continue;
             }
+
             let nx = new_x as usize;
             let ny = new_y as usize;
+
             if map.terrain[ny][nx] == 0 {
                 valid_directions.push(direction);
             }
         }
+
         if valid_directions.is_empty() {
             None
         } else {
@@ -427,5 +433,50 @@ mod tests {
         for &(x, y) in &path {
             assert_eq!(map.terrain[y][x], 0, "Path should not go through obstacles");
         }
+    }
+
+    #[test]
+    fn test_get_safe_random_direction_from_position_center() {
+        let map = create_test_map(5, 5);
+        let direction = Pathfinder::get_safe_random_direction_from_position(&map, 2, 2);
+        assert!(direction.is_some());
+    }
+
+    #[test]
+    fn test_get_safe_random_direction_from_position_edge() {
+        let map = create_test_map(5, 5);
+        // Test from edge position - should only return valid directions
+        let direction = Pathfinder::get_safe_random_direction_from_position(&map, 0, 0);
+        if let Some(dir) = direction {
+            // Should only be able to move South or East from (0,0)
+            assert!(matches!(dir, Direction::South | Direction::East));
+        }
+    }
+
+    #[test]
+    fn test_get_safe_random_direction_from_position_corner() {
+        let map = create_test_map(5, 5);
+        // Test from corner position
+        let direction = Pathfinder::get_safe_random_direction_from_position(&map, 4, 4);
+        if let Some(dir) = direction {
+            // Should only be able to move North or West from (4,4)
+            assert!(matches!(dir, Direction::North | Direction::West));
+        }
+    }
+
+    #[test]
+    fn test_get_safe_random_direction_from_position_with_obstacles() {
+        let mut map = create_test_map(5, 5);
+        // Add obstacles around position (2,2)
+        map.terrain[1][2] = 1; // North blocked
+        map.terrain[3][2] = 1; // South blocked
+        map.terrain[2][1] = 1; // West blocked
+        map.terrain[2][3] = 1; // East blocked
+
+        let direction = Pathfinder::get_safe_random_direction_from_position(&map, 2, 2);
+        assert!(
+            direction.is_none(),
+            "Should not find valid direction when surrounded by obstacles"
+        );
     }
 }
