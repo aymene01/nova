@@ -28,7 +28,7 @@ impl Executor {
         {
             robot.move_in_direction(random_direction, map)?;
         } else {
-            println!("No path found to target area, using random direction for exploration");
+            // println!("No path found to target area, using random direction for exploration");
         }
         Ok(())
     }
@@ -39,11 +39,19 @@ impl Executor {
         harvest_task: HarvestTask,
     ) -> Result<(), &'static str> {
         let target_pos = harvest_task.target_position;
-        if robot.position() == target_pos {
+
+        let should_harvest =
+            robot.position() == target_pos || map.resources.contains_key(&robot.position());
+
+        if should_harvest {
             robot.set_state(RobotState::Harvesting);
-            robot.collect_resource(map)?;
+
+            if map.resources.contains_key(&robot.position()) {
+                robot.collect_resource(map)?;
+            }
             return Ok(());
         }
+
         robot.set_state(RobotState::MovingToResource);
         let pathfinder = Pathfinder::new();
         if let Some(direction) = pathfinder.get_next_move(robot.position(), target_pos, map) {

@@ -72,7 +72,7 @@ impl HarvesterBehavior {
         map: &Map,
     ) -> Option<((usize, usize), ResourceType)> {
         let preferred_types = vec![ResourceType::Energy, ResourceType::Mineral];
-        SearchUtils::find_nearest_resource(robot.x, robot.y, 4, map, &preferred_types)
+        return SearchUtils::find_nearest_resource(robot.x, robot.y, 4, map, &preferred_types);
     }
 
     fn get_resource_exploration_target(&self, robot: &Robot, map: &Map) -> Option<(usize, usize)> {
