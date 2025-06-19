@@ -1,6 +1,20 @@
 # Nova - Autonomous Robot Simulation System
 
-Nova is a sophisticated robot simulation system written in Rust that models autonomous robots with specialized behaviors operating in a dynamic environment. The system features three distinct robot types, each with unique capabilities and decision-making processes, supported by an advanced A* pathfinding algorithm.
+Nova is a sophisticated robot simulation system written in Rust that models autonomous robots with specialized behaviors operating in a dynamic environment. The system features three distinct robot types, each with unique capabilities and decision-making processes, supported by an advanced A* pathfinding algorithm and real-time TUI visualization.
+
+## 🚀 Latest Features (v0.4.0)
+
+### Real-Time Robot Movement
+- **Live Simulation**: Robots move autonomously in real-time with persistent TUI visualization
+- **Interactive Controls**: Press 'q' to quit the simulation gracefully
+- **Smooth Animation**: 500ms update intervals for fluid robot movement
+- **Energy Management**: Real-time energy consumption and recharge at stations
+
+### Advanced Visualization System
+- **Dual-Mode Architecture**: Automatic detection of terminal vs. automated environments
+- **Interactive TUI**: Rich terminal interface with Ratatui for exploration
+- **Fallback Mode**: Simple text output for scripts and CI/CD compatibility
+- **Viewport System**: Efficient rendering for maps of any size (O(viewport_size) complexity)
 
 ## 🤖 Robot Types and Behaviors
 
@@ -151,10 +165,17 @@ All robots follow a priority-based decision system:
 - **Strategic Planning**: Robots plan return trips based on remaining energy
 - **Resource Optimization**: Balanced energy costs vs. capability benefits
 
+### Information Merging System
+- **Git-like Conflict Resolution**: Intelligent merging of robot discoveries
+- **Confidence-based Decisions**: Weighted merging based on robot confidence levels
+- **Automatic Conflict Detection**: Detects terrain, resource, and confidence conflicts
+- **Manual Review System**: Complex conflicts flagged for human intervention
+- **Merge Statistics**: Comprehensive tracking of fusion operations
+
 ## 🧪 Testing and Quality
 
 ### Comprehensive Test Suite
-- **62 Unit Tests** covering all robot behaviors and pathfinding
+- **115 Unit Tests** covering all robot behaviors and pathfinding
 - **Behavior Verification**: Tests for each robot type's decision-making
 - **Pathfinding Tests**: A* algorithm correctness and performance
 - **Integration Tests**: Robot-environment interaction scenarios
@@ -170,7 +191,7 @@ All robots follow a priority-based decision system:
 
 ### Running the Simulation
 ```bash
-# Run the main simulation
+# Run the main simulation with interactive configuration
 cargo run
 
 # Run all tests
@@ -183,11 +204,25 @@ cargo test -- --nocapture
 cargo test robot_ai::behaviors::explorer
 ```
 
+### Interactive Configuration
+The simulation starts with an interactive configuration menu:
+- **Seed**: Determines map generation (default: 42)
+- **Map Dimensions**: Width and height of the simulation world
+- **Robot Count**: Number of robots to spawn (distributed across types)
+
+### Real-Time Controls
+- **'q' Key**: Gracefully exit the simulation
+- **Automatic Updates**: Robots move every 500ms
+- **Live Statistics**: Real-time resource collection and energy levels
+
 ### Project Structure
 ```
 src/
 ├── simulation/
 │   ├── entities/          # Robot, Map, Station definitions
+│   ├── engine.rs          # Concurrent simulation engine
+│   ├── map.rs             # Procedural map generation
+│   ├── visualization.rs   # TUI and fallback visualization
 │   └── robot_ai/          # AI system implementation
 │       ├── behavior.rs    # Behavior trait and factory
 │       ├── behaviors/     # Individual robot behaviors
@@ -197,6 +232,8 @@ src/
 │       ├── pathfinding.rs # A* pathfinding algorithm
 │       ├── types.rs       # Task and type definitions
 │       └── utils.rs       # Shared utility functions
+├── cli/                   # Command-line interface
+├── config/                # Interactive configuration
 └── main.rs               # Application entry point
 ```
 
@@ -209,6 +246,7 @@ The Nova system demonstrates advanced autonomous robotics concepts:
 - **Efficient Pathfinding**: Optimal navigation in dynamic environments
 - **Resource Management**: Strategic energy and resource allocation
 - **Emergent Behavior**: Complex system behavior from simple robot rules
+- **Information Fusion**: Git-like conflict resolution for distributed knowledge
 
 ## 📈 Future Enhancements
 
@@ -216,8 +254,19 @@ The Nova system demonstrates advanced autonomous robotics concepts:
 - **Advanced Analysis Types**: Geological, Biological analysis capabilities
 - **Learning Algorithms**: Adaptive behavior based on environment feedback
 - **Multi-Objective Optimization**: Balanced exploration, harvesting, and research
-- **Real-time Visualization**: Interactive simulation monitoring and control
+- **Enhanced Visualization**: Mouse support, zoom levels, export capabilities
+- **Distributed Simulation**: Multi-node simulation for large-scale scenarios
+
+## 📚 Architecture Decision Records
+
+The project includes comprehensive ADRs documenting key architectural decisions:
+
+- **[ADR-0001: Map Generation System](docs/adr/0001-map-generation-system.md)** - Procedural terrain and resource generation
+- **[ADR-0002: Visualization System](docs/adr/0002-visualization-system.md)** - Dual-mode TUI and fallback visualization
+- **[ADR-0003: Concurrency Model](docs/adr/0003-concurrency-model.md)** - Tokio-based concurrent simulation engine
+- **[ADR-0004: Robot AI Algorithms](docs/adr/0004-robot-ai-algorithms.md)** - Behavior patterns and decision-making systems
+- **[ADR-0005: Information Merging System](docs/adr/0005-information-merging-system.md)** - Git-like conflict resolution for robot discoveries
 
 ---
 
-*Nova represents a sophisticated simulation of autonomous robot systems, showcasing modern Rust development practices and advanced algorithmic implementations.*
+*Nova represents a sophisticated simulation of autonomous robot systems, showcasing modern Rust development practices, advanced algorithmic implementations, and real-time interactive visualization.*

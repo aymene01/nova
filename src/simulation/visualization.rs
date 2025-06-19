@@ -1,5 +1,7 @@
-use crate::simulation::entities::{Map, ResourceType, Robot, RobotType};
+use crate::simulation::entities::{Map, ResourceType};
 use crate::simulation::map::TerrainType;
+use crate::simulation::robot_ai::robot::Robot;
+use crate::simulation::robot_ai::types::RobotType;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
     execute,

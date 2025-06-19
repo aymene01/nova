@@ -6,11 +6,13 @@
 
 ## Change Log
 
-- [approved](#) 2025-05-28
+- [approved](#) 2025-05-28 - Initial dual-mode architecture
+- [updated](#) 2025-01-15 - Real-time TUI with persistent visualization
 
 ## Referenced Use Case(s)
 
 - [ADR-0001: Map Generation System](./0001-map-generation-system.md) - Addresses visualization concerns mentioned in the map generation ADR
+- [ADR-0006: Real-Time Simulation System](./0006-real-time-simulation-system.md) - Real-time visualization requirements
 - Interactive map visualization and user experience requirements
 
 ## Context
@@ -29,6 +31,9 @@ We needed a visualization system that:
 3. Works in both interactive and automated environments
 4. Maintains optimal performance regardless of map size
 5. Follows Clean Code principles with minimal complexity
+6. **NEW**: Supports real-time robot movement visualization
+7. **NEW**: Provides persistent TUI with live updates
+8. **NEW**: Offers graceful user controls and exit mechanisms
 
 ## Proposed Design
 
@@ -59,6 +64,11 @@ When running in a proper terminal environment, the system uses Ratatui for rich 
 - **Color-Coded Display**: Terrain and resources use distinct colors for clarity
 - **Real-time Statistics**: Live resource counts and density calculations
 - **Smart Centering**: Small maps are automatically centered in the viewport
+- **NEW**: **Real-time Robot Movement**: Live visualization of robot positions and actions
+- **NEW**: **Persistent Updates**: Continuous refresh at 500ms intervals
+- **NEW**: **Interactive Controls**: 'q' key for graceful exit
+- **NEW**: **Energy Display**: Real-time energy levels for each robot
+- **NEW**: **Resource Tracking**: Live updates of collected resources
 
 **Technical Implementation:**
 
@@ -66,6 +76,9 @@ When running in a proper terminal environment, the system uses Ratatui for rich 
 - Implements proper terminal state management (raw mode, alternate screen)
 - Graceful error handling and cleanup on exit
 - Memory-efficient rendering with minimal allocations
+- **NEW**: Non-blocking event polling for responsive controls
+- **NEW**: Terminal state restoration on exit
+- **NEW**: Real-time data synchronization with simulation engine
 
 ### Fallback Mode
 
@@ -75,6 +88,8 @@ When stdin/stdout is redirected (pipes, scripts, CI/CD), the system automaticall
 - Preserves scriptability and automation compatibility
 - No dependencies on terminal capabilities
 - Identical data representation in different format
+- **NEW**: Periodic updates for long-running simulations
+- **NEW**: Progress indicators for automated runs
 
 ### Adaptive Rendering
 
@@ -93,12 +108,50 @@ The system adapts to different map sizes intelligently:
 - Enhanced statistics with density metrics
 - Efficient bounds checking
 
-### Performance Optimizations
+### Real-Time Visualization Features
 
-1. **Viewport Culling**: Only processes visible cells during rendering
-2. **Minimal Allocations**: Reuses data structures where possible
-3. **Efficient Layout**: 2-character cell width for optimal readability
-4. **Smart Updates**: Only redraws when necessary
+#### Robot Movement Display
+```rust
+// Real-time robot position updates
+for robot in robots {
+    let symbol = match robot.robot_type() {
+        RobotType::Explorer => "🗺️",
+        RobotType::Harvester => "⛏️",
+        RobotType::Scientist => "🔬",
+    };
+    
+    // Display with energy level indicator
+    let energy_bar = format!("[{}]", "█".repeat(robot.energy() as usize / 10));
+    // Render at robot position
+}
+```
+
+#### Live Statistics Panel
+```rust
+// Real-time resource tracking
+let stats = format!(
+    "Energy: {} | Minerals: {} | Discoveries: {} | Active Robots: {}",
+    station.get_resource_amount(&ResourceType::Energy),
+    station.get_resource_amount(&ResourceType::Mineral),
+    station.discoveries,
+    robots.iter().filter(|r| !r.is_low_energy()).count()
+);
+```
+
+#### Interactive Controls
+```rust
+// Non-blocking event handling
+if event::poll(Duration::from_millis(100)).unwrap_or(false) {
+    if let Ok(Event::Key(key)) = event::read() {
+        match key.code {
+            KeyCode::Char('q') => return Ok(()), // Graceful exit
+            KeyCode::Char('h') => { /* Help */ },
+            KeyCode::Char('s') => { /* Save state */ },
+            _ => {}
+        }
+    }
+}
+```
 
 ## Considerations
 
@@ -123,6 +176,16 @@ The system adapts to different map sizes intelligently:
    - User experience fragmentation
    - Maintenance overhead
 
+5. **NEW**: **WebSocket-based Real-time Updates**: Considered but rejected due to:
+   - Additional network complexity
+   - Performance overhead for local simulation
+   - Increased deployment complexity
+
+6. **NEW**: **Shared Memory Visualization**: Considered but rejected due to:
+   - Platform-specific implementation
+   - Security concerns
+   - Debugging complexity
+
 ### Technical Decisions
 
 1. **Ratatui over other TUI libraries**: Chosen for its:
@@ -143,6 +206,16 @@ The system adapts to different map sizes intelligently:
    - Responsive performance on large maps
    - Scalable architecture
 
+4. **NEW**: **Non-blocking Event Polling**: Chosen for:
+   - Responsive user controls
+   - No impact on simulation performance
+   - Graceful handling of rapid key presses
+
+5. **NEW**: **Terminal State Management**: Implemented for:
+   - Proper cleanup on exit
+   - Cross-platform compatibility
+   - User experience consistency
+
 ### Concerns and Mitigations
 
 1. **Terminal Compatibility**:
@@ -158,6 +231,14 @@ The system adapts to different map sizes intelligently:
 3. **User Experience Consistency**:
    - **Concern**: Different experiences between TUI and fallback modes
    - **Mitigation**: Both modes provide identical information, just different presentation
+
+4. **NEW**: **Real-time Performance**:
+   - **Concern**: Impact of continuous updates on simulation performance
+   - **Mitigation**: 500ms update intervals balance responsiveness and performance
+
+5. **NEW**: **Memory Usage**:
+   - **Concern**: Potential memory leaks during long sessions
+   - **Mitigation**: Proper cleanup and minimal allocations in render loop
 
 ## Decision
 
@@ -182,6 +263,12 @@ The implemented dual-mode visualization system provides optimal user experience 
    - Automatic adaptation to different map sizes
    - Clear visual feedback and information display
 
+6. **NEW**: **Real-time Capabilities**:
+   - Live robot movement visualization
+   - Persistent TUI with continuous updates
+   - Responsive user controls
+   - Graceful exit mechanisms
+
 ### Benefits Achieved:
 
 - **Scalability**: Handles maps from 5x5 to 50x50+ with equal performance
@@ -189,6 +276,9 @@ The implemented dual-mode visualization system provides optimal user experience 
 - **Automation-Friendly**: Maintains scriptability and CI/CD compatibility
 - **Maintainability**: Clean separation of concerns between modes
 - **Performance**: Constant memory usage and responsive rendering
+- **NEW**: **Immersive Experience**: Real-time visualization of robot behaviors
+- **NEW**: **Responsive Controls**: Immediate user feedback and control
+- **NEW**: **Robust Operation**: Graceful handling of errors and exit conditions
 
 ### Future Enhancement Opportunities:
 
@@ -197,13 +287,18 @@ The implemented dual-mode visualization system provides optimal user experience 
 - Export capabilities (PNG, SVG)
 - Real-time simulation visualization
 - Multi-map comparison views
+- **NEW**: **Advanced Controls**: Pause/resume, speed control, robot selection
+- **NEW**: **Enhanced Display**: Robot trails, heat maps, statistics graphs
+- **NEW**: **Recording Features**: Save/load simulation states, replay functionality
 
 ## Other Related ADRs
 
 - [ADR-0001: Map Generation System](./0001-map-generation-system.md) - Addresses visualization limitations mentioned in the original map generation ADR
+- [ADR-0006: Real-Time Simulation System](./0006-real-time-simulation-system.md) - Real-time visualization requirements and implementation
 
 ## References
 
 - [Ratatui Documentation](https://docs.rs/ratatui/) - The TUI framework used for interactive visualization
 - [Crossterm Documentation](https://docs.rs/crossterm/) - Cross-platform terminal manipulation library
 - [std::io::IsTerminal](https://doc.rust-lang.org/std/io/trait.IsTerminal.html) - Standard library terminal detection
+- [Tokio Documentation](https://docs.rs/tokio/) - Async runtime for real-time features
