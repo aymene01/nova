@@ -113,7 +113,7 @@ impl RobotThreadManager {
     }
 
     async fn robot_worker(robot_id: usize, shared_state: SharedState, start_time: Instant) {
-        tokio::time::sleep_until(start_time.into()).await;
+        tokio::time::sleep_until(start_time).await;
 
         let mut interval = tokio::time::interval(Duration::from_millis(500));
 
