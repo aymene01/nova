@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-/// Represents the different terrain types in the map
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerrainType {
     Plain = 0,
@@ -61,11 +60,9 @@ pub enum MapError {
     IOError(#[from] std::io::Error),
 }
 
-/// Result type for map operations
 pub type MapResult<T> = Result<T, MapError>;
 
 impl Map {
-    /// Creates a new map with the specified dimensions and seed
     pub fn new(width: usize, height: usize, seed: u64) -> Self {
         let mut map = Map {
             width,
@@ -83,14 +80,12 @@ impl Map {
         map
     }
 
-    /// Saves the map to a file
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> MapResult<()> {
         let content = serde_json::to_string_pretty(self)?;
         fs::write(path, content)?;
         Ok(())
     }
 
-    /// Generates the terrain using Perlin noise
     fn generate_terrain(&mut self) {
         let constants = MapConstants::default();
 
@@ -120,12 +115,10 @@ impl Map {
         }
     }
 
-    /// Generates resources on the map
     fn generate_resources(&mut self) {
         let constants = MapConstants::default();
         let mut rng = ChaCha8Rng::seed_from_u64(self.seed);
 
-        // Create a second noise instance for resource generation
         let resource_noise = Perlin::new((self.seed.wrapping_add(42)) as u32);
 
         for y in 0..self.height {
@@ -158,17 +151,15 @@ impl Map {
 }
 
 impl TerrainType {
-    /// Check if this terrain type is traversable by robots
     pub fn is_traversable(&self) -> bool {
         matches!(self, TerrainType::Plain | TerrainType::Hill)
     }
 
-    /// Get the movement cost for this terrain type
     pub fn movement_cost(&self) -> u32 {
         match self {
             TerrainType::Plain => 1,
             TerrainType::Hill => 2,
-            TerrainType::Mountain | TerrainType::Canyon => 0, // Not traversable
+            TerrainType::Mountain | TerrainType::Canyon => 0,
         }
     }
 }

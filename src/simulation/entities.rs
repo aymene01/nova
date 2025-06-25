@@ -4,8 +4,7 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 
-/// Movement constants
-pub const STATION_RECHARGE_RATE: u32 = 50; // Energy recharged per station visit
+pub const STATION_RECHARGE_RATE: u32 = 50;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResourceType {
@@ -14,18 +13,16 @@ pub enum ResourceType {
     ScientificInterest,
 }
 
-/// Information about a discovered location
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocationInfo {
     pub position: (usize, usize),
     pub terrain_type: u8,
     pub resource: Option<(ResourceType, u32)>,
-    pub discovered_by: usize, // robot ID
-    pub discovery_time: u64,  // simulation tick when discovered
-    pub confidence: f32,      // confidence level (0.0 to 1.0)
+    pub discovered_by: usize,
+    pub discovery_time: u64,
+    pub confidence: f32,
 }
 
-/// Represents a conflict between two pieces of information
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct InformationConflict {
     pub position: (usize, usize),
@@ -42,7 +39,6 @@ pub enum ConflictType {
     ConfidenceConflict,
 }
 
-/// Resolution strategy for conflicts
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ConflictResolution {
     KeepCurrent,
@@ -239,7 +235,6 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(robot.carrying, Some((ResourceType::Mineral, 75)));
 
-        // Resource should be removed from map
         assert!(!map.resources.contains_key(&(3, 3)));
     }
 
@@ -258,7 +253,6 @@ mod tests {
         assert_eq!(resource_type, ResourceType::Mineral);
         assert_eq!(amount, 30);
 
-        // Resource should be removed from map
         assert!(!map.resources.contains_key(&(2, 2)));
     }
 
@@ -278,7 +272,7 @@ mod tests {
         station.receive_resource(ResourceType::Energy, 50);
 
         assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
-        assert_eq!(station.discoveries, 0); // Energy doesn't count as discovery
+        assert_eq!(station.discoveries, 0);
     }
 
     #[test]
@@ -291,7 +285,7 @@ mod tests {
             station.get_resource_amount(&ResourceType::ScientificInterest),
             100
         );
-        assert_eq!(station.discoveries, 1); // Should increment discoveries
+        assert_eq!(station.discoveries, 1);
     }
 
     #[test]
@@ -331,28 +325,27 @@ mod tests {
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 100);
 
-        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30); // Low energy
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
 
         let result = station.recharge_robot(&mut robot);
 
         assert!(result.is_ok());
         let recharged = result.unwrap();
-        assert_eq!(recharged, 50); // STATION_RECHARGE_RATE
-        assert_eq!(robot.energy(), 80); // 30 + 50
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50); // 100 - 50
+        assert_eq!(recharged, 50);
+        assert_eq!(robot.energy(), 80);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
     }
 
     #[test]
     fn station_cannot_recharge_without_energy() {
         let mut station = Station::new(5, 5);
-        // No energy in station
 
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
 
         let result = station.recharge_robot(&mut robot);
 
         assert!(result.is_err());
-        assert_eq!(robot.energy(), 30); // Unchanged
+        assert_eq!(robot.energy(), 30);
     }
 
     #[test]
@@ -366,13 +359,13 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(robot.energy(), robot.max_energy());
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100); // Unchanged
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100);
     }
 
     #[test]
     fn station_recharges_partial_when_limited_energy() {
         let mut station = Station::new(5, 5);
-        station.receive_resource(ResourceType::Energy, 20); // Limited energy
+        station.receive_resource(ResourceType::Energy, 20);
 
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
 
@@ -380,9 +373,9 @@ mod tests {
 
         assert!(result.is_ok());
         let recharged = result.unwrap();
-        assert_eq!(recharged, 20); // Limited by station energy
-        assert_eq!(robot.energy(), 50); // 30 + 20
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 0); // All used
+        assert_eq!(recharged, 20);
+        assert_eq!(robot.energy(), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 0);
     }
 
     #[test]
@@ -390,35 +383,31 @@ mod tests {
         let mut station = Station::new(5, 5);
         station.receive_resource(ResourceType::Energy, 100);
 
-        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 90); // Near full
+        let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 90);
 
         let result = station.recharge_robot(&mut robot);
 
         assert!(result.is_ok());
         let recharged = result.unwrap();
-        assert_eq!(recharged, 10); // Only what's needed to fill up
+        assert_eq!(recharged, 10);
         assert_eq!(robot.energy(), 100);
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 90); // 100 - 10
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 90);
     }
 
     #[test]
     fn station_can_recharge_check_works() {
         let mut station = Station::new(0, 0);
 
-        // Initially no energy
         assert!(!station.can_recharge());
 
-        // Add energy
         station.receive_resource(ResourceType::Energy, 100);
         assert!(station.can_recharge());
 
-        // Consume all energy by recharging multiple robots
         let mut robot1 = Robot::new(1, RobotType::Explorer, 0, 0, 50);
         let mut robot2 = Robot::new(2, RobotType::Explorer, 0, 0, 50);
         let _ = station.recharge_robot(&mut robot1);
         let _ = station.recharge_robot(&mut robot2);
 
-        // Should not be able to recharge anymore (100 energy used, 50 each)
         assert!(!station.can_recharge());
     }
 }

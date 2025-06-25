@@ -10,100 +10,9 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-/// Utility for visualizing the map in the terminal
 pub struct MapVisualizer;
 
 impl MapVisualizer {
-    // /// Visualizes the map in the terminal
-    // pub fn visualize(map: &Map) -> Result<(), Box<dyn std::error::Error>> {
-    //     Self::visualize_with_robots(map, &[])
-    // }
-
-    // pub fn visualize_with_robots(
-    //     map: &Map,
-    //     robots: &[Robot],
-    // ) -> Result<(), Box<dyn std::error::Error>> {
-    //     if crossterm::terminal::is_raw_mode_enabled()? {
-    //         Self::visualize_tui(map, robots)
-    //     } else {
-    //         Self::visualize_fallback(map, robots);
-    //         Ok(())
-    //     }
-    // }
-
-    // fn visualize_tui(map: &Map, robots: &[Robot]) -> Result<(), Box<dyn std::error::Error>> {
-    //     let mut stdout = io::stdout();
-    //     crossterm::execute!(stdout, crossterm::terminal::EnterAlternateScreen)?;
-    //     crossterm::terminal::enable_raw_mode()?;
-
-    //     let backend = CrosstermBackend::new(stdout);
-    //     let mut terminal = Terminal::new(backend)?;
-
-    //     let mut app = App::new(map, robots);
-    //     let res = Self::run_app(&mut terminal, &mut app);
-
-    //     crossterm::terminal::disable_raw_mode()?;
-    //     crossterm::execute!(terminal.backend_mut(), crossterm::terminal::LeaveAlternateScreen)?;
-    //     terminal.show_cursor()?;
-
-    //     if let Err(err) = res {
-    //         println!("{:?}", err);
-    //     }
-
-    //     Ok(())
-    // }
-
-    // fn visualize_fallback(map: &Map, robots: &[Robot]) {
-    //     println!("Map Visualization ({}x{})", map.width, map.height);
-    //     println!("Legend: . = Plain, ^ = Hill, # = Mountain, R = Robot, S = Station");
-    //     println!();
-
-    //     for y in 0..map.height {
-    //         for x in 0..map.width {
-    //             let mut cell = match map.terrain[y][x] {
-    //                 0 => '.',
-    //                 1 => '^',
-    //                 2 => '#',
-    //                 _ => '?',
-    //             };
-
-    //             // Check if there's a robot at this position
-    //             for robot in robots {
-    //                 if robot.position() == (x, y) {
-    //                     cell = 'R';
-    //                     break;
-    //                 }
-    //             }
-
-    //             print!("{}", cell);
-    //         }
-    //         println!();
-    //     }
-    //     println!();
-    // }
-
-    // fn run_app<B: ratatui::backend::Backend>(
-    //     terminal: &mut Terminal<B>,
-    //     app: &mut App,
-    // ) -> io::Result<()> {
-    //     loop {
-    //         terminal.draw(|f| ui(f, app))?;
-
-    //         if crossterm::event::poll(std::time::Duration::from_millis(250))? {
-    //             if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
-    //                 match key.code {
-    //                     crossterm::event::KeyCode::Char('q') => return Ok(()),
-    //                     crossterm::event::KeyCode::Up => app.scroll_up(),
-    //                     crossterm::event::KeyCode::Down => app.scroll_down(),
-    //                     crossterm::event::KeyCode::Left => app.scroll_left(),
-    //                     crossterm::event::KeyCode::Right => app.scroll_right(),
-    //                     _ => {}
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     pub fn ui(f: &mut Frame, app: &App) {
         let stats_height = if app.map.width * app.map.height > 400 {
             12
@@ -241,12 +150,12 @@ impl MapVisualizer {
                     .add_modifier(Modifier::BOLD),
             )]),
             Line::from(vec![
-                Span::styled("Explorers", Style::default().fg(Color::Green)),
+                Span::styled("Explorers", Style::default().fg(Color::White)),
                 Span::raw(": "),
                 Span::styled(format!("{}", explorers), Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
-                Span::styled("Harvesters", Style::default().fg(Color::Blue)),
+                Span::styled("Harvesters", Style::default().fg(Color::Yellow)),
                 Span::raw(": "),
                 Span::styled(format!("{}", harvesters), Style::default().fg(Color::White)),
             ]),
@@ -283,14 +192,14 @@ impl MapVisualizer {
         let station_pos = (map.width / 2, map.height / 2);
 
         if (x, y) == station_pos {
-            return ('@', Color::Yellow);
+            return ('@', Color::Green);
         }
 
         for robot in robots {
             if robot.x == x && robot.y == y {
                 return match robot.robot_type {
-                    RobotType::Explorer => ('X', Color::Green),
-                    RobotType::Harvester => ('H', Color::Blue),
+                    RobotType::Explorer => ('X', Color::White),
+                    RobotType::Harvester => ('H', Color::Yellow),
                     RobotType::Scientist => ('R', Color::Magenta),
                 };
             }
@@ -306,10 +215,10 @@ impl MapVisualizer {
 
         let terrain_type = TerrainType::from(map.terrain[y][x]);
         match terrain_type {
-            TerrainType::Plain => ('.', Color::White),
+            TerrainType::Plain => ('.', Color::Green),
             TerrainType::Hill => ('^', Color::Yellow),
             TerrainType::Mountain => ('▲', Color::Red),
-            TerrainType::Canyon => ('#', Color::Red),
+            TerrainType::Canyon => ('#', Color::Gray),
         }
     }
 }
