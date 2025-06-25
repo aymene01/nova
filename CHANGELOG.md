@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/aymene01/nova/compare/@nova-v0.4.0...@nova-v0.5.0) (2025-06-25)
+
+
+### Features
+
+* link robots to the engine ([#17](https://github.com/aymene01/nova/issues/17)) ([a1cacb4](https://github.com/aymene01/nova/commit/a1cacb4d0c372216ea8aabd5e5d4c80727513c7d))
+
+
+### Bug Fixes
+
+* add 1s interval for each spawn of robots ([#20](https://github.com/aymene01/nova/issues/20)) ([9ecf702](https://github.com/aymene01/nova/commit/9ecf70231dac00dfe81f1df8a13f585b5ffffc25))
+
 ## [0.4.0](https://github.com/aymene01/nova/compare/@nova-v0.3.0...@nova-v0.4.0) (2025-06-18)
 
 
