@@ -1,89 +1,18 @@
-use noise::Perlin;
-
 // Re-export for backward compatibility during refactoring
 pub use crate::domain::values::resource::ResourceType;
 pub use crate::domain::entities::station::Station;
+pub use crate::domain::entities::map::{Map, MapConstants, MapError, MapResult};
 pub use crate::domain::values::information::{
     ConflictResolution, ConflictType, InformationConflict, LocationInfo,
 };
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
-
-
-
-pub struct Map {
-    pub width: usize,
-    pub height: usize,
-    pub terrain: Vec<Vec<u8>>,
-    pub resources: HashMap<(usize, usize), (ResourceType, u32)>,
-    pub discovered: Vec<Vec<bool>>,
-    pub discovered_resources: HashMap<(usize, usize), (ResourceType, u32)>,
-    pub noise: Perlin,
-    pub seed: u64,
-}
-
-impl Serialize for Map {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("Map", 6)?;
-        state.serialize_field("width", &self.width)?;
-        state.serialize_field("height", &self.height)?;
-        state.serialize_field("terrain", &self.terrain)?;
-
-        let resources_vec: Vec<((usize, usize), (ResourceType, u32))> = self
-            .resources
-            .iter()
-            .map(|(&k, v)| (k, v.clone()))
-            .collect();
-        state.serialize_field("resources", &resources_vec)?;
-
-        state.serialize_field("discovered", &self.discovered)?;
-        state.serialize_field("seed", &self.seed)?;
-        state.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for Map {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct MapHelper {
-            width: usize,
-            height: usize,
-            terrain: Vec<Vec<u8>>,
-            resources: Vec<((usize, usize), (ResourceType, u32))>,
-            discovered: Vec<Vec<bool>>,
-            seed: u64,
-        }
-
-        let helper = MapHelper::deserialize(deserializer)?;
-        let resources: HashMap<(usize, usize), (ResourceType, u32)> =
-            helper.resources.into_iter().collect();
-        let noise = Perlin::new(helper.seed as u32);
-
-        Ok(Map {
-            width: helper.width,
-            height: helper.height,
-            terrain: helper.terrain,
-            resources,
-            discovered: helper.discovered,
-            discovered_resources: HashMap::new(),
-            noise,
-            seed: helper.seed,
-        })
-    }
-}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::application::robot_ai::robot::Robot;
     use crate::application::robot_ai::types::{Direction, RobotType};
+    use crate::domain::entities::map::Map;
+    use crate::domain::entities::station::Station;
+    use crate::domain::values::resource::ResourceType;
 
     #[test]
     fn robot_creation_works() {
