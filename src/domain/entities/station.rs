@@ -67,4 +67,4 @@ impl Station {
     pub fn can_recharge(&self) -> bool {
         self.get_resource_amount(&ResourceType::Energy) > 0
     }
-} 
+}

@@ -1,2 +1,2 @@
 // Re-export from domain layer for backward compatibility
-pub use crate::domain::entities::map::{Map, MapConstants, MapError, MapResult};
+// TODO: Add map-specific functionality here if needed

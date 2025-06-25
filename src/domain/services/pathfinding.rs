@@ -2,6 +2,7 @@ use crate::domain::entities::map::Map;
 use crate::domain::values::position::Position;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
+#[allow(dead_code)]
 #[derive(Copy, Clone, Eq, PartialEq)]
 struct PathNode {
     cost: u32,
@@ -10,7 +11,10 @@ struct PathNode {
 
 impl Ord for PathNode {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.cost.cmp(&self.cost).then_with(|| self.position.cmp(&other.position))
+        other
+            .cost
+            .cmp(&self.cost)
+            .then_with(|| self.position.cmp(&other.position))
     }
 }
 
@@ -20,6 +24,7 @@ impl PartialOrd for PathNode {
     }
 }
 
+#[allow(dead_code)]
 pub fn find_path(
     map: &Map,
     start: (usize, usize),
@@ -63,7 +68,7 @@ pub fn find_path(
                 parents.insert(neighbor, position);
 
                 let heuristic = Position::from_tuple(neighbor)
-                    .manhattan_distance_to(Position::from_tuple(goal)) as u32;
+                    .manhattan_distance_to(Position::from_tuple(goal));
 
                 heap.push(PathNode {
                     cost: new_cost + heuristic,
@@ -76,6 +81,7 @@ pub fn find_path(
     None
 }
 
+#[allow(dead_code)]
 fn get_neighbors(map: &Map, position: (usize, usize)) -> Vec<(usize, usize)> {
     let (x, y) = position;
     let mut neighbors = Vec::new();
@@ -91,10 +97,7 @@ fn get_neighbors(map: &Map, position: (usize, usize)) -> Vec<(usize, usize)> {
         let new_x = x as i32 + dx;
         let new_y = y as i32 + dy;
 
-        if new_x >= 0
-            && new_y >= 0
-            && (new_x as usize) < map.width
-            && (new_y as usize) < map.height
+        if new_x >= 0 && new_y >= 0 && (new_x as usize) < map.width && (new_y as usize) < map.height
         {
             neighbors.push((new_x as usize, new_y as usize));
         }
@@ -103,6 +106,7 @@ fn get_neighbors(map: &Map, position: (usize, usize)) -> Vec<(usize, usize)> {
     neighbors
 }
 
+#[allow(dead_code)]
 fn get_movement_cost(map: &Map, position: (usize, usize)) -> u32 {
     let terrain_type = map.terrain[position.1][position.0];
     match terrain_type {
@@ -114,6 +118,7 @@ fn get_movement_cost(map: &Map, position: (usize, usize)) -> u32 {
     }
 }
 
+#[allow(dead_code)]
 fn reconstruct_path(
     parents: &HashMap<(usize, usize), (usize, usize)>,
     start: (usize, usize),
@@ -129,4 +134,4 @@ fn reconstruct_path(
     path.push(start);
     path.reverse();
     path
-} 
+}

@@ -1,10 +1,7 @@
 // Re-export for backward compatibility during refactoring
-pub use crate::domain::values::resource::ResourceType;
+pub use crate::domain::entities::map::Map;
 pub use crate::domain::entities::station::Station;
-pub use crate::domain::entities::map::{Map, MapConstants, MapError, MapResult};
-pub use crate::domain::values::information::{
-    ConflictResolution, ConflictType, InformationConflict, LocationInfo,
-};
+pub use crate::domain::values::resource::ResourceType;
 
 #[cfg(test)]
 mod tests {

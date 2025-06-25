@@ -33,4 +33,4 @@ pub enum ConflictResolution {
     AcceptNew,
     Merge,
     RequiresManualReview,
-} 
+}
