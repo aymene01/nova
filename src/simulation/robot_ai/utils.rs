@@ -57,7 +57,6 @@ impl SearchUtils {
         })
     }
 
-    /// Finds the nearest unexplored area within a search radius
     pub fn find_nearest_unexplored(
         robot_x: usize,
         robot_y: usize,
@@ -69,7 +68,6 @@ impl SearchUtils {
         })
     }
 
-    /// Finds the nearest scientific interest within a search radius
     pub fn find_nearest_scientific_interest(
         robot_x: usize,
         robot_y: usize,

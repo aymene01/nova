@@ -10,9 +10,9 @@ use config::Config;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{Terminal, backend::CrosstermBackend};
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use std::time::{Duration, Instant};
 
@@ -131,7 +131,6 @@ fn draw_tui(
 
     Ok(())
 }
-
 fn schedule_robot_start_times(robot_count: usize) -> Vec<Instant> {
     let mut start_times = Vec::new();
     for i in 0..robot_count {

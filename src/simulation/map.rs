@@ -21,22 +21,16 @@ impl From<u8> for TerrainType {
             1 => TerrainType::Hill,
             2 => TerrainType::Mountain,
             3 => TerrainType::Canyon,
-            _ => TerrainType::Plain, // Default to plain for unknown values
+            _ => TerrainType::Plain,
         }
     }
 }
 
-/// Constants for map generation
 pub struct MapConstants {
-    /// Frequency for Perlin noise
     pub noise_frequency: f64,
-    /// Threshold for resource generation
     pub energy_threshold: f64,
-    /// Threshold for mineral generation
     pub mineral_threshold: f64,
-    /// Threshold for scientific interest generation
     pub scientific_threshold: f64,
-    /// Maximum resource amount
     pub max_resource_amount: u32,
 }
 
@@ -91,15 +85,12 @@ impl Map {
 
         for y in 0..self.height {
             for x in 0..self.width {
-                // Generate noise value for this point
                 let nx = x as f64 * constants.noise_frequency;
                 let ny = y as f64 * constants.noise_frequency;
                 let noise_val = self.noise.get([nx, ny]);
 
-                // Normalize noise from [-1, 1] to [0, 1]
                 let normalized = (noise_val + 1.0) / 2.0;
 
-                // Convert to terrain type (0-3)
                 let terrain_type = if normalized < 0.4 {
                     TerrainType::Plain as u8
                 } else if normalized < 0.7 {
@@ -123,24 +114,19 @@ impl Map {
 
         for y in 0..self.height {
             for x in 0..self.width {
-                // Use a different seed for resources
                 let nx = x as f64 * constants.noise_frequency * 1.5;
                 let ny = y as f64 * constants.noise_frequency * 1.5;
                 let noise_val = (resource_noise.get([nx, ny]) + 1.0) / 2.0;
 
-                // Generate different types of resources based on noise value
                 if noise_val > constants.scientific_threshold {
-                    // Scientific interest points (rare)
                     let amount = rng.random_range(10..=constants.max_resource_amount);
                     self.resources
                         .insert((x, y), (ResourceType::ScientificInterest, amount));
                 } else if noise_val > constants.mineral_threshold {
-                    // Minerals (less common)
                     let amount = rng.random_range(20..=constants.max_resource_amount);
                     self.resources
                         .insert((x, y), (ResourceType::Mineral, amount));
                 } else if noise_val > constants.energy_threshold {
-                    // Energy (more common)
                     let amount = rng.random_range(30..=constants.max_resource_amount);
                     self.resources
                         .insert((x, y), (ResourceType::Energy, amount));
