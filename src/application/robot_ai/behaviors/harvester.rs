@@ -1,8 +1,8 @@
-use crate::simulation::entities::{Map, ResourceType, Station};
 use crate::application::robot_ai::behavior::RobotBehavior;
 use crate::application::robot_ai::robot::Robot;
 use crate::application::robot_ai::types::{HarvestTask, Task, TaskType};
 use crate::application::robot_ai::utils::SearchUtils;
+use crate::simulation::entities::{Map, ResourceType, Station};
 
 pub struct HarvesterBehavior;
 
@@ -85,8 +85,8 @@ impl HarvesterBehavior {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::entities::{Map, ResourceType, Station};
     use crate::application::robot_ai::types::{RobotState, RobotType, TaskType};
+    use crate::simulation::entities::{Map, ResourceType, Station};
     use std::collections::HashMap;
 
     fn create_test_robot(x: usize, y: usize, energy: u32) -> Robot {

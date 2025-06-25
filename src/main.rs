@@ -5,12 +5,12 @@ mod domain;
 mod infrastructure;
 mod simulation;
 
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::RobotType;
 use crate::infrastructure::threading::simulation_runner::{
     RobotThreadManager, SharedState, SimulationMessage,
 };
 use crate::simulation::entities::{Map, Station};
-use crate::application::robot_ai::robot::Robot;
-use crate::application::robot_ai::types::RobotType;
 
 use config::Config;
 use crossterm::{
@@ -170,8 +170,11 @@ fn draw_tui(
     let station_guard = station.lock().unwrap();
 
     terminal.draw(|f| {
-        let app =
-            crate::infrastructure::presentation::tui_renderer::App::new(&map_guard, &robots_guard, &station_guard);
+        let app = crate::infrastructure::presentation::tui_renderer::App::new(
+            &map_guard,
+            &robots_guard,
+            &station_guard,
+        );
         MapVisualizer::ui(f, &app);
     })?;
 

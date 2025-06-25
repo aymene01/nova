@@ -1,6 +1,6 @@
-use crate::simulation::entities::{Map, Station};
 use crate::application::robot_ai::robot::Robot;
 use crate::application::robot_ai::types::Task;
+use crate::simulation::entities::{Map, Station};
 
 pub trait RobotBehavior: Send {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task>;
