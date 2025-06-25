@@ -120,6 +120,8 @@ impl Executor {
                             // println!("Error recharging robot");
                         }
                     }
+                } else {
+                    // println!("Station is full, cannot recharge robot");
                 }
             }
             robot.set_state(RobotState::Idle);
