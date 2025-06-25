@@ -1,17 +1,11 @@
 use crate::simulation::robot_ai::robot::Robot;
+use crate::domain::values::resource::ResourceType;
 use noise::Perlin;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
 
 pub const STATION_RECHARGE_RATE: u32 = 50;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ResourceType {
-    Energy,
-    Mineral,
-    ScientificInterest,
-}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LocationInfo {

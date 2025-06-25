@@ -1,6 +1,9 @@
 mod cli;
 mod config;
 mod simulation;
+mod domain;
+mod application;
+mod infrastructure;
 
 use crate::simulation::entities::{Map, Station};
 use crate::simulation::robot_ai::robot::Robot;
