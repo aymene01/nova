@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/aymene01/nova/compare/@nova-v0.5.0...@nova-v0.6.0) (2025-06-25)
+
+
+### Features
+
+* add threading ([#22](https://github.com/aymene01/nova/issues/22)) ([d230e0b](https://github.com/aymene01/nova/commit/d230e0b11a2136caa760f60e66435b54bfd33ddd))
+
 ## [0.5.0](https://github.com/aymene01/nova/compare/@nova-v0.4.0...@nova-v0.5.0) (2025-06-25)
 
 
