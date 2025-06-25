@@ -8,7 +8,6 @@ pub enum RobotType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub enum RobotState {
     Idle,
     Exploring,
@@ -16,15 +15,12 @@ pub enum RobotState {
     Harvesting,
     ReturningToStation,
     Analyzing,
-    Searching,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Task {
     pub task_type: TaskType,
-    #[allow(dead_code)]
     pub target_position: Option<(usize, usize)>,
-    #[allow(dead_code)]
     pub priority: u8,
 }
 

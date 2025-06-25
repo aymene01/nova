@@ -1,11 +1,8 @@
 use crate::simulation::entities::{Map, ResourceType};
 
-/// Utility functions for robot behaviors to reduce code duplication
 pub struct SearchUtils;
 
 impl SearchUtils {
-    /// Performs a radius-based search around a robot's position
-    /// Returns the first position that matches the given predicate function
     pub fn radius_search<F>(
         robot_x: usize,
         robot_y: usize,
@@ -39,7 +36,6 @@ impl SearchUtils {
         None
     }
 
-    /// Finds the nearest resource of specific types within a search radius
     pub fn find_nearest_resource(
         robot_x: usize,
         robot_y: usize,
@@ -61,7 +57,6 @@ impl SearchUtils {
         })
     }
 
-    /// Finds the nearest unexplored area within a search radius
     pub fn find_nearest_unexplored(
         robot_x: usize,
         robot_y: usize,
@@ -73,7 +68,6 @@ impl SearchUtils {
         })
     }
 
-    /// Finds the nearest scientific interest within a search radius
     pub fn find_nearest_scientific_interest(
         robot_x: usize,
         robot_y: usize,
@@ -95,7 +89,7 @@ mod tests {
     use crate::simulation::entities::{Map, ResourceType};
 
     fn create_test_map() -> Map {
-        Map::new_test_map(10, 10)
+        Map::new(10, 10, 42)
     }
 
     #[test]

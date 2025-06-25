@@ -6,7 +6,6 @@ use crate::simulation::robot_ai::types::{AnalyzeTask, ExploreTask, HarvestTask, 
 pub struct Executor;
 
 impl Executor {
-    /// Helper method to move robot towards a target position
     fn move_towards_target(
         robot: &mut Robot,
         map: &mut Map,
@@ -39,7 +38,6 @@ impl Executor {
             return Ok(());
         }
         Executor::move_towards_target(robot, map, target_pos)?;
-        // Mark current position as discovered for exploration tasks
         if robot.x < map.width && robot.y < map.height {
             map.discovered[robot.y][robot.x] = true;
         }

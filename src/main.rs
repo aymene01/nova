@@ -33,11 +33,9 @@ async fn start_simulation(config: Config) {
     println!("  Map: {}x{}", config.map_width, config.map_height);
     println!("  Robots: {}", config.robots_count);
 
-    // Create map and station
     let mut map = Map::new(config.map_width, config.map_height, config.seed);
     let mut station = Station::new(config.map_width / 2, config.map_height / 2);
 
-    // Give station initial energy for recharging robots
     station.receive_resource(crate::simulation::entities::ResourceType::Energy, 10000);
 
     let mut robots = Vec::new();
@@ -55,7 +53,7 @@ async fn start_simulation(config: Config) {
         // let robot_x = (station_pos.0 as f64 + radius * angle.cos()).round() as usize;
         // let robot_y = (station_pos.1 as f64 + radius * angle.sin()).round() as usize;
 
-        // // Ensure robot position is within map bounds with padding
+        // Ensure robot position is within map bounds with padding
         // let robot_x = robot_x.min(config.map_width - 2).max(1);
         // let robot_y = robot_y.min(config.map_height - 2).max(1);
         let robot = Robot::new(i, robot_type, station_pos.0, station_pos.1, 100);
@@ -95,12 +93,10 @@ async fn start_simulation(config: Config) {
             last_update = Instant::now();
         }
 
-        // Draw TUI
         if let Err(e) = draw_tui(&mut terminal, &map, &robots) {
             break Err(e);
         }
 
-        // Check for quit key (non-blocking)
         if event::poll(Duration::from_millis(100)).unwrap_or(false) {
             if let Ok(Event::Key(key)) = event::read() {
                 if key.code == KeyCode::Char('q') {
@@ -110,7 +106,6 @@ async fn start_simulation(config: Config) {
         }
     };
 
-    // Cleanup TUI
     disable_raw_mode().expect("Failed to disable raw mode");
     execute!(terminal.backend_mut(), LeaveAlternateScreen)
         .expect("Failed to leave alternate screen");
@@ -130,14 +125,12 @@ fn draw_tui(
     use crate::simulation::visualization::MapVisualizer;
 
     terminal.draw(|f| {
-        // Use the existing UI function from MapVisualizer
         let app = crate::simulation::visualization::App::new(map, robots);
         MapVisualizer::ui(f, &app);
     })?;
 
     Ok(())
 }
-
 fn schedule_robot_start_times(robot_count: usize) -> Vec<Instant> {
     let mut start_times = Vec::new();
     for i in 0..robot_count {

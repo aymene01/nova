@@ -59,9 +59,8 @@ mod map_tests {
         assert!(mountains > 0);
         assert!(canyons > 0);
 
-        // Verify terrain distribution (approximate)
-        assert!((plains as f64 / total as f64) > 0.2); // At least 20% plains
-        assert!((canyons as f64 / total as f64) < 0.3); // Less than 30% canyons
+        assert!((plains as f64 / total as f64) > 0.2);
+        assert!((canyons as f64 / total as f64) < 0.3);
     }
 
     #[test]
@@ -120,7 +119,7 @@ mod map_tests {
 
     #[test]
     fn test_resource_collection() {
-        let mut map = Map::new_test_map(5, 5);
+        let mut map = Map::new(5, 5, 42);
         map.resources.insert((2, 2), (ResourceType::Energy, 10));
         let mut robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
 
@@ -132,7 +131,7 @@ mod map_tests {
 
     #[test]
     fn test_robots_never_leave_map_bounds() {
-        let map = Map::new_test_map(10, 10);
+        let map = Map::new(10, 10, 42);
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 100);
 
         for step in 0..100 {
@@ -161,11 +160,16 @@ mod map_tests {
 
     #[test]
     fn test_robots_can_walk_on_resources() {
-        let mut map = Map::new_test_map(5, 5);
+        let mut map = Map::new(5, 5, 42);
         map.resources.insert((2, 2), (ResourceType::Energy, 10));
         map.resources.insert((3, 2), (ResourceType::Mineral, 15));
         map.resources
             .insert((2, 3), (ResourceType::ScientificInterest, 8));
+
+        map.terrain[1][2] = 0;
+        map.terrain[2][2] = 0;
+        map.terrain[2][3] = 0;
+        map.terrain[3][2] = 0;
 
         let mut explorer = Robot::new(1, RobotType::Explorer, 1, 1, 100);
 
@@ -217,39 +221,32 @@ mod map_tests {
         use crate::simulation::robot_ai::robot::Robot;
         use crate::simulation::robot_ai::types::{Direction, RobotType};
 
-        // Create a test map with hills
-        let mut map = Map::new_test_map(5, 5);
-        map.terrain[2][2] = 1; // Hill at center
+        let mut map = Map::new(5, 5, 42);
+        map.terrain[2][2] = 1;
 
-        // Test Explorer robot
         let mut explorer = Robot::new(1, RobotType::Explorer, 2, 1, 100);
         let initial_energy = explorer.energy();
 
-        // Move to hill position
         let movement_cost = explorer.move_in_direction(Direction::South, &map).unwrap();
-        assert_eq!(movement_cost, 2); // Hill should cost 2
+        assert_eq!(movement_cost, 2);
         assert_eq!(explorer.x, 2);
         assert_eq!(explorer.y, 2);
 
-        // Consume energy for movement
         explorer.consume_energy_for_movement(movement_cost).unwrap();
-        assert_eq!(explorer.energy(), initial_energy - 3); // Base cost (2) + hill cost (1) = 3
+        assert_eq!(explorer.energy(), initial_energy - 3);
 
-        // Test Harvester robot
         let mut harvester = Robot::new(2, RobotType::Harvester, 1, 2, 100);
         let initial_energy_harvester = harvester.energy();
 
-        // Move to hill position
         let movement_cost = harvester.move_in_direction(Direction::East, &map).unwrap();
-        assert_eq!(movement_cost, 2); // Hill should cost 2
+        assert_eq!(movement_cost, 2);
         assert_eq!(harvester.x, 2);
         assert_eq!(harvester.y, 2);
 
-        // Consume energy for movement
         harvester
             .consume_energy_for_movement(movement_cost)
             .unwrap();
-        assert_eq!(harvester.energy(), initial_energy_harvester - 4); // Base cost (3) + hill cost (1) = 4
+        assert_eq!(harvester.energy(), initial_energy_harvester - 4);
     }
 
     #[test]
@@ -257,18 +254,15 @@ mod map_tests {
         use crate::simulation::robot_ai::robot::Robot;
         use crate::simulation::robot_ai::types::{Direction, RobotType};
 
-        // Create a test map with mountains
-        let mut map = Map::new_test_map(5, 5);
-        map.terrain[2][2] = 2; // Mountain at center
+        let mut map = Map::new(5, 5, 42);
+        map.terrain[2][2] = 2;
 
-        // Test Explorer robot
         let mut explorer = Robot::new(1, RobotType::Explorer, 2, 1, 100);
 
-        // Try to move to mountain position - should fail
         let result = explorer.move_in_direction(Direction::South, &map);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Move blocked by terrain");
         assert_eq!(explorer.x, 2);
-        assert_eq!(explorer.y, 1); // Position should not change
+        assert_eq!(explorer.y, 1);
     }
 }
