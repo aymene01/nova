@@ -4,6 +4,8 @@ use crate::simulation::robot_ai::behavior::RobotBehavior;
 use crate::simulation::robot_ai::executor::Executor;
 use crate::simulation::robot_ai::pathfinding::Pathfinder;
 use crate::simulation::robot_ai::types::{Direction, RobotState, RobotType, Task, TaskType};
+use crate::simulation::threading::SimulationMessage;
+use tokio::sync::mpsc::Sender;
 
 pub struct Robot {
     pub id: usize,
@@ -163,11 +165,12 @@ impl Robot {
         map: &mut Map,
         station: &mut Station,
         action: Option<Task>,
+        message_sender: Option<&Sender<SimulationMessage>>,
     ) -> Result<(), &'static str> {
         if let Some(task) = action {
             match task.task_type {
                 TaskType::Explore(explore_task) => {
-                    Executor::execute_explore_task(self, map, explore_task)
+                    Executor::execute_explore_task(self, map, explore_task, message_sender)
                 }
                 TaskType::Harvest(harvest_task) => {
                     Executor::execute_harvest_task(self, map, harvest_task)

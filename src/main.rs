@@ -5,6 +5,7 @@ mod simulation;
 use crate::simulation::entities::{Map, Station};
 use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::RobotType;
+use crate::simulation::threading::{RobotThreadManager, SharedState, SimulationMessage};
 
 use config::Config;
 use crossterm::{
@@ -33,7 +34,7 @@ async fn start_simulation(config: Config) {
     println!("  Map: {}x{}", config.map_width, config.map_height);
     println!("  Robots: {}", config.robots_count);
 
-    let mut map = Map::new(config.map_width, config.map_height, config.seed);
+    let map = Map::new(config.map_width, config.map_height, config.seed);
     let mut station = Station::new(config.map_width / 2, config.map_height / 2);
 
     station.receive_resource(crate::simulation::entities::ResourceType::Energy, 10000);
@@ -47,15 +48,6 @@ async fn start_simulation(config: Config) {
         };
 
         let station_pos = station.position();
-        // let angle = (i as f64) * 2.0 * std::f64::consts::PI / (config.robots_count as f64);
-        // let radius = 8.0;
-
-        // let robot_x = (station_pos.0 as f64 + radius * angle.cos()).round() as usize;
-        // let robot_y = (station_pos.1 as f64 + radius * angle.sin()).round() as usize;
-
-        // Ensure robot position is within map bounds with padding
-        // let robot_x = robot_x.min(config.map_width - 2).max(1);
-        // let robot_y = robot_y.min(config.map_height - 2).max(1);
         let robot = Robot::new(i, robot_type, station_pos.0, station_pos.1, 100);
         robots.push(robot);
     }
@@ -70,6 +62,11 @@ async fn start_simulation(config: Config) {
     println!("Simulation running... Press 'q' in TUI to quit");
     tokio::time::sleep(Duration::from_millis(2000)).await;
 
+    let (shared_state, mut message_receiver) = SharedState::new(map, station, robots);
+    let thread_manager = RobotThreadManager::new(shared_state.clone(), config.robots_count);
+
+    thread_manager.start_robot_threads().await;
+
     enable_raw_mode().expect("Failed to enable raw mode");
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen).expect("Failed to enter alternate screen");
@@ -77,24 +74,60 @@ async fn start_simulation(config: Config) {
     let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
 
     let mut last_update = Instant::now();
-    let robot_start_times = schedule_robot_start_times(robots.len());
+
     let result = loop {
-        if last_update.elapsed() >= Duration::from_millis(500) {
-            for (i, robot) in robots.iter_mut().enumerate() {
-                if Instant::now() >= robot_start_times[i] {
-                    let action = robot.decide_next_action(&map, &station);
+        let mut should_shutdown = false;
 
-                    if let Err(e) = robot.execute_action(&mut map, &mut station, action) {
-                        eprintln!("Robot {} failed to execute action: {}", robot.id, e);
-                    }
+        while let Ok(message) = message_receiver.try_recv() {
+            match message {
+                SimulationMessage::RobotAction {
+                    robot_id: _,
+                    action: _,
+                } => {
+                    // println!("Robot {} executing action: {:?}", robot_id, action);
                 }
+                SimulationMessage::ResourceCollected {
+                    robot_id: _,
+                    position: _,
+                } => {
+                    // println!("Robot {} collected resource at {:?}", robot_id, position);
+                }
+                SimulationMessage::ResourceDelivered { robot_id: _ } => {
+                    // println!("Robot {} delivered resource to station", robot_id);
+                }
+                SimulationMessage::RobotRecharged {
+                    robot_id: _,
+                    energy_amount: _,
+                } => {
+                    // println!("Robot {} recharged with {} energy", robot_id, energy_amount);
+                }
+                SimulationMessage::ResourceDiscovered {
+                    robot_id: _,
+                    position: _,
+                    resource_type: _,
+                    amount: _,
+                } => {
+                    // println!(
+                    //     "🔍 Robot {} discovered {:?} (amount: {}) at position {:?}",
+                    //     robot_id, resource_type, amount, position
+                    // );
+                }
+                SimulationMessage::Shutdown => {
+                    should_shutdown = true;
+                }
+                _ => {}
             }
-
-            last_update = Instant::now();
         }
 
-        if let Err(e) = draw_tui(&mut terminal, &map, &robots) {
-            break Err(e);
+        if should_shutdown {
+            break Ok(());
+        }
+
+        if last_update.elapsed() >= Duration::from_millis(500) {
+            if let Err(e) = draw_tui(&mut terminal, &shared_state) {
+                break Err(e);
+            }
+            last_update = Instant::now();
         }
 
         if event::poll(Duration::from_millis(100)).unwrap_or(false) {
@@ -119,22 +152,23 @@ async fn start_simulation(config: Config) {
 
 fn draw_tui(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    map: &Map,
-    robots: &[Robot],
+    shared_state: &SharedState,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::simulation::visualization::MapVisualizer;
 
+    let map = shared_state.get_map();
+    let robots = shared_state.get_robots();
+    let station = shared_state.get_station();
+
+    let map_guard = map.lock().unwrap();
+    let robots_guard = robots.lock().unwrap();
+    let station_guard = station.lock().unwrap();
+
     terminal.draw(|f| {
-        let app = crate::simulation::visualization::App::new(map, robots);
+        let app =
+            crate::simulation::visualization::App::new(&map_guard, &robots_guard, &station_guard);
         MapVisualizer::ui(f, &app);
     })?;
 
     Ok(())
-}
-fn schedule_robot_start_times(robot_count: usize) -> Vec<Instant> {
-    let mut start_times = Vec::new();
-    for i in 0..robot_count {
-        start_times.push(Instant::now() + Duration::from_millis(i as u64 * 1000));
-    }
-    start_times
 }

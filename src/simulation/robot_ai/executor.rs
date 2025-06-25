@@ -2,6 +2,8 @@ use crate::simulation::entities::{Map, Station};
 use crate::simulation::robot_ai::pathfinding::Pathfinder;
 use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::{AnalyzeTask, ExploreTask, HarvestTask, RobotState};
+use crate::simulation::threading::SimulationMessage;
+use tokio::sync::mpsc::Sender;
 
 pub struct Executor;
 
@@ -28,6 +30,7 @@ impl Executor {
         robot: &mut Robot,
         map: &mut Map,
         task: ExploreTask,
+        message_sender: Option<&Sender<SimulationMessage>>,
     ) -> Result<(), &'static str> {
         robot.set_state(RobotState::Exploring);
         let target_pos: (usize, usize) = task.target_area;
@@ -35,6 +38,32 @@ impl Executor {
 
         if current_pos == target_pos {
             robot.mark_area_as_discovered(map, target_pos, task.radius);
+
+            let start_x = target_pos.0.saturating_sub(task.radius);
+            let end_x = (target_pos.0 + task.radius + 1).min(map.width);
+            let start_y = target_pos.1.saturating_sub(task.radius);
+            let end_y = (target_pos.1 + task.radius + 1).min(map.height);
+
+            for y in start_y..end_y {
+                for x in start_x..end_x {
+                    let distance = ((x as i32 - target_pos.0 as i32).abs()
+                        + (y as i32 - target_pos.1 as i32).abs())
+                        as usize;
+                    if distance <= task.radius {
+                        if let Some((resource_type, amount)) = map.discover_resource_at((x, y)) {
+                            if let Some(sender) = message_sender {
+                                let _ = sender.try_send(SimulationMessage::ResourceDiscovered {
+                                    robot_id: robot.id,
+                                    position: (x, y),
+                                    resource_type: resource_type.clone(),
+                                    amount,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
             return Ok(());
         }
         Executor::move_towards_target(robot, map, target_pos)?;

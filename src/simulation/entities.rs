@@ -53,6 +53,7 @@ pub struct Map {
     pub terrain: Vec<Vec<u8>>,
     pub resources: HashMap<(usize, usize), (ResourceType, u32)>,
     pub discovered: Vec<Vec<bool>>,
+    pub discovered_resources: HashMap<(usize, usize), (ResourceType, u32)>,
     pub noise: Perlin,
     pub seed: u64,
 }
@@ -106,12 +107,12 @@ impl<'de> Deserialize<'de> for Map {
             terrain: helper.terrain,
             resources,
             discovered: helper.discovered,
+            discovered_resources: HashMap::new(),
             noise,
             seed: helper.seed,
         })
     }
 }
-
 pub struct Station {
     pub resources: HashMap<ResourceType, u32>,
     pub discoveries: u32,
