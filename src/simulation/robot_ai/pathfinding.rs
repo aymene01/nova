@@ -6,7 +6,6 @@ use std::collections::{BinaryHeap, HashMap};
 
 pub struct Pathfinder;
 
-#[allow(dead_code)]
 impl Pathfinder {
     pub fn new() -> Self {
         Pathfinder
@@ -82,13 +81,11 @@ impl Pathfinder {
 
                 let neighbor = (new_x as usize, new_y as usize);
 
-                // Check terrain traversability using TerrainType methods
                 let terrain_type = TerrainType::from(map.terrain[neighbor.1][neighbor.0]);
                 if !terrain_type.is_traversable() {
                     continue;
                 }
 
-                // Calculate movement cost based on terrain
                 let movement_cost = terrain_type.movement_cost();
 
                 let tentative_g_score = g_score[&current.position] + movement_cost;
@@ -176,7 +173,6 @@ impl Pathfinder {
             let nx = new_x as usize;
             let ny = new_y as usize;
 
-            // Allow movement on traversable terrain using TerrainType methods
             let terrain_type = TerrainType::from(map.terrain[ny][nx]);
             if terrain_type.is_traversable() {
                 valid_directions.push(direction);
@@ -196,9 +192,19 @@ impl Pathfinder {
 mod tests {
     use super::*;
     use crate::simulation::entities::Map;
+    use noise::Perlin;
 
     fn create_test_map(width: usize, height: usize) -> Map {
-        Map::new_test_map(width, height)
+        let map = Map {
+            width,
+            height,
+            terrain: vec![vec![0; width]; height], // All plain terrain (traversable)
+            resources: HashMap::new(),
+            discovered: vec![vec![false; width]; height],
+            noise: Perlin::new(42),
+            seed: 42,
+        };
+        map
     }
 
     fn create_map_with_obstacles(
@@ -209,7 +215,7 @@ mod tests {
         let mut map = create_test_map(width, height);
         for (x, y) in obstacles {
             if x < width && y < height {
-                map.terrain[y][x] = 2; // Use Mountain (2) instead of Hill (1) for impassable obstacles
+                map.terrain[y][x] = 2;
             }
         }
         map

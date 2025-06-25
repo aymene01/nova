@@ -2,12 +2,9 @@ use crate::simulation::entities::{Map, ResourceType};
 use noise::{NoiseFn, Perlin};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
-use serde_json;
 use std::collections::HashMap;
 use std::fs;
-use std::io;
 use std::path::Path;
-use thiserror::Error;
 
 /// Represents the different terrain types in the map
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,30 +53,17 @@ impl Default for MapConstants {
     }
 }
 
-/// Errors that can occur during map operations
-#[derive(Debug, Error)]
-#[allow(dead_code)]
+#[derive(Debug, thiserror::Error)]
 pub enum MapError {
-    #[error("Position ({0}, {1}) is out of bounds")]
-    OutOfBounds(usize, usize),
-
-    #[error("No resource at position ({0}, {1})")]
-    NoResourceAtPosition(usize, usize),
-
-    #[error("Cannot collect more resources than available")]
-    InsufficientResources,
-
     #[error("Failed to serialize map: {0}")]
     SerializationError(#[from] serde_json::Error),
-
     #[error("Failed to write map to file: {0}")]
-    IOError(#[from] io::Error),
+    IOError(#[from] std::io::Error),
 }
 
 /// Result type for map operations
 pub type MapResult<T> = Result<T, MapError>;
 
-#[allow(dead_code)]
 impl Map {
     /// Creates a new map with the specified dimensions and seed
     pub fn new(width: usize, height: usize, seed: u64) -> Self {
@@ -99,21 +83,10 @@ impl Map {
         map
     }
 
-    /// Loads a map from a file
-    pub fn load_from_file<P: AsRef<Path>>(path: P) -> MapResult<Self> {
-        let file_content = fs::read_to_string(path)?;
-        let mut map: Map = serde_json::from_str(&file_content)?;
-
-        // Recreate the Perlin noise generator from the seed
-        map.noise = Perlin::new(map.seed as u32);
-
-        Ok(map)
-    }
-
     /// Saves the map to a file
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> MapResult<()> {
-        let serialized = serde_json::to_string_pretty(self)?;
-        fs::write(path, serialized)?;
+        let content = serde_json::to_string_pretty(self)?;
+        fs::write(path, content)?;
         Ok(())
     }
 
@@ -181,64 +154,6 @@ impl Map {
                 }
             }
         }
-    }
-
-    /// Checks if the given position is within the map bounds
-    pub fn is_position_valid(&self, x: usize, y: usize) -> bool {
-        x < self.width && y < self.height
-    }
-
-    /// Gets the terrain type at the given position
-    pub fn get_terrain(&self, x: usize, y: usize) -> MapResult<TerrainType> {
-        if !self.is_position_valid(x, y) {
-            return Err(MapError::OutOfBounds(x, y));
-        }
-
-        Ok(TerrainType::from(self.terrain[y][x]))
-    }
-
-    /// Marks a position as discovered
-    pub fn discover(&mut self, x: usize, y: usize) -> MapResult<()> {
-        if !self.is_position_valid(x, y) {
-            return Err(MapError::OutOfBounds(x, y));
-        }
-
-        self.discovered[y][x] = true;
-        Ok(())
-    }
-
-    /// Checks if a position is discovered
-    pub fn is_discovered(&self, x: usize, y: usize) -> MapResult<bool> {
-        if !self.is_position_valid(x, y) {
-            return Err(MapError::OutOfBounds(x, y));
-        }
-
-        Ok(self.discovered[y][x])
-    }
-
-    /// Gets the resource at the given position, if any
-    pub fn get_resource(&self, x: usize, y: usize) -> MapResult<Option<(ResourceType, u32)>> {
-        if !self.is_position_valid(x, y) {
-            return Err(MapError::OutOfBounds(x, y));
-        }
-
-        Ok(self.resources.get(&(x, y)).cloned())
-    }
-
-    /// Gets the map's seed
-    pub fn get_seed(&self) -> u64 {
-        self.seed
-    }
-
-    /// Gets the map dimensions
-    pub fn dimensions(&self) -> (usize, usize) {
-        (self.width, self.height)
-    }
-
-    /// Checks if the terrain at a position is traversable
-    pub fn is_traversable(&self, x: usize, y: usize) -> MapResult<bool> {
-        let terrain_type = self.get_terrain(x, y)?;
-        Ok(terrain_type.is_traversable())
     }
 }
 

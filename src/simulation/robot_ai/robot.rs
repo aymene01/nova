@@ -47,29 +47,12 @@ impl Robot {
         self.behavior.get_energy_consumption_rate()
     }
 
-    pub fn robot_type(&self) -> RobotType {
-        self.robot_type.clone()
-    }
-
-    pub fn state(&self) -> RobotState {
-        self.state.clone()
-    }
-
     pub fn set_state(&mut self, new_state: RobotState) {
         self.state = new_state;
     }
 
     pub fn is_low_energy(&self) -> bool {
         self.energy <= self.behavior.get_low_energy_threshold()
-    }
-
-    pub fn consume_energy(&mut self) -> Result<(), &'static str> {
-        if self.energy >= self.energy_consumption_rate() {
-            self.energy -= self.energy_consumption_rate();
-            Ok(())
-        } else {
-            Err("Insufficient energy")
-        }
     }
 
     pub fn recharge(&mut self, amount: u32) {
@@ -91,7 +74,6 @@ impl Robot {
         let new_x = (self.x as i32 + dx) as usize;
         let new_y = (self.y as i32 + dy) as usize;
 
-        // Check for negative values (underflow) and map bounds
         if (self.x as i32 + dx) < 0
             || (self.y as i32 + dy) < 0
             || new_x >= map.width
@@ -100,13 +82,11 @@ impl Robot {
             return Err("Move out of bounds");
         }
 
-        // Check terrain traversability - allow movement on Plain (0) and Hill (1)
         let terrain_type = TerrainType::from(map.terrain[new_y][new_x]);
         if !terrain_type.is_traversable() {
             return Err("Move blocked by terrain");
         }
 
-        // Calculate movement cost based on terrain
         let movement_cost = terrain_type.movement_cost();
 
         self.x = new_x;
@@ -114,9 +94,8 @@ impl Robot {
         Ok(movement_cost)
     }
 
-    /// Consume energy based on terrain movement cost
     pub fn consume_energy_for_movement(&mut self, movement_cost: u32) -> Result<(), &'static str> {
-        let total_cost = self.energy_consumption_rate() + movement_cost - 1; // -1 because base cost is already included in energy_consumption_rate
+        let total_cost = self.energy_consumption_rate() + movement_cost - 1;
         if self.energy >= total_cost {
             self.energy -= total_cost;
             Ok(())
@@ -154,8 +133,6 @@ impl Robot {
         let station_pos = (station.x, station.y);
         let distance = Pathfinder::manhattan_distance_to(self.position(), station_pos);
 
-        // Estimate energy cost with terrain factor
-        // Assume average terrain cost of 1.5 (mix of plains and hills)
         let average_terrain_cost = 1.5;
         let energy_per_move = self.energy_consumption_rate() + average_terrain_cost as u32 - 1;
 
@@ -203,24 +180,21 @@ impl Robot {
                 }
             }
         } else {
-            // No action to execute, just consume minimal energy for being idle
-            self.consume_energy()?;
             Ok(())
         }
     }
 
     pub fn mark_area_as_discovered(&self, map: &mut Map, center: (usize, usize), radius: usize) {
-        let center_x = center.0 as i32;
-        let center_y = center.1 as i32;
+        let start_x = center.0.saturating_sub(radius);
+        let end_x = (center.0 + radius + 1).min(map.width);
+        let start_y = center.1.saturating_sub(radius);
+        let end_y = (center.1 + radius + 1).min(map.height);
 
-        for dx in -(radius as i32)..=(radius as i32) {
-            for dy in -(radius as i32)..=(radius as i32) {
-                let x = center_x + dx;
-                let y = center_y + dy;
-
-                if x >= 0 && y >= 0 && x < map.width as i32 && y < map.height as i32 {
-                    let x = x as usize;
-                    let y = y as usize;
+        for y in start_y..end_y {
+            for x in start_x..end_x {
+                let distance = ((x as i32 - center.0 as i32).abs()
+                    + (y as i32 - center.1 as i32).abs()) as usize;
+                if distance <= radius {
                     map.discovered[y][x] = true;
                 }
             }

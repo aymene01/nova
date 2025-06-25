@@ -120,7 +120,7 @@ mod map_tests {
 
     #[test]
     fn test_resource_collection() {
-        let mut map = Map::new_test_map(5, 5);
+        let mut map = Map::new(5, 5, 42);
         map.resources.insert((2, 2), (ResourceType::Energy, 10));
         let mut robot = Robot::new(1, RobotType::Harvester, 2, 2, 100);
 
@@ -132,7 +132,7 @@ mod map_tests {
 
     #[test]
     fn test_robots_never_leave_map_bounds() {
-        let map = Map::new_test_map(10, 10);
+        let map = Map::new(10, 10, 42);
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 100);
 
         for step in 0..100 {
@@ -161,7 +161,7 @@ mod map_tests {
 
     #[test]
     fn test_robots_can_walk_on_resources() {
-        let mut map = Map::new_test_map(5, 5);
+        let mut map = Map::new(5, 5, 42);
         map.resources.insert((2, 2), (ResourceType::Energy, 10));
         map.resources.insert((3, 2), (ResourceType::Mineral, 15));
         map.resources
@@ -218,7 +218,7 @@ mod map_tests {
         use crate::simulation::robot_ai::types::{Direction, RobotType};
 
         // Create a test map with hills
-        let mut map = Map::new_test_map(5, 5);
+        let mut map = Map::new(5, 5, 42);
         map.terrain[2][2] = 1; // Hill at center
 
         // Test Explorer robot
@@ -258,7 +258,7 @@ mod map_tests {
         use crate::simulation::robot_ai::types::{Direction, RobotType};
 
         // Create a test map with mountains
-        let mut map = Map::new_test_map(5, 5);
+        let mut map = Map::new(5, 5, 42);
         map.terrain[2][2] = 2; // Mountain at center
 
         // Test Explorer robot

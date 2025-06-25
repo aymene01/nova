@@ -6,7 +6,6 @@ use crate::simulation::robot_ai::types::{AnalyzeTask, ExploreTask, HarvestTask, 
 pub struct Executor;
 
 impl Executor {
-    /// Helper method to move robot towards a target position
     fn move_towards_target(
         robot: &mut Robot,
         map: &mut Map,
