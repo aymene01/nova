@@ -64,6 +64,7 @@ impl Map {
             terrain: vec![vec![0; width]; height],
             resources: HashMap::new(),
             discovered: vec![vec![false; width]; height],
+            discovered_resources: HashMap::new(),
             noise: Perlin::new(seed as u32),
             seed,
         };
@@ -72,6 +73,20 @@ impl Map {
         map.generate_resources();
 
         map
+    }
+
+    pub fn discover_resource_at(
+        &mut self,
+        position: (usize, usize),
+    ) -> Option<(ResourceType, u32)> {
+        if let Some(resource) = self.resources.get(&position) {
+            let resource_info = resource.clone();
+            self.discovered_resources
+                .insert(position, resource_info.clone());
+            Some(resource_info)
+        } else {
+            None
+        }
     }
 
     pub fn save_to_file<P: AsRef<Path>>(&self, path: P) -> MapResult<()> {

@@ -201,6 +201,7 @@ mod tests {
             terrain: vec![vec![0; width]; height],
             resources: HashMap::new(),
             discovered: vec![vec![false; width]; height],
+            discovered_resources: HashMap::new(),
             noise: Perlin::new(42),
             seed: 42,
         }

@@ -2,7 +2,7 @@ use crate::simulation::entities::{Map, Station};
 use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::Task;
 
-pub trait RobotBehavior {
+pub trait RobotBehavior: Send {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task>;
     fn get_energy_consumption_rate(&self) -> u32;
     fn get_max_energy(&self) -> u32;
