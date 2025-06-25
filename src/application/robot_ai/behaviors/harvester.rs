@@ -1,8 +1,8 @@
+use crate::application::robot_ai::behavior::RobotBehavior;
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::{HarvestTask, Task, TaskType};
+use crate::application::robot_ai::utils::SearchUtils;
 use crate::simulation::entities::{Map, ResourceType, Station};
-use crate::simulation::robot_ai::behavior::RobotBehavior;
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::{HarvestTask, Task, TaskType};
-use crate::simulation::robot_ai::utils::SearchUtils;
 
 pub struct HarvesterBehavior;
 
@@ -29,7 +29,7 @@ impl RobotBehavior for HarvesterBehavior {
 
         if let Some(exploration_target) = self.find_exploration_target(robot, map) {
             return Some(Task {
-                task_type: TaskType::Explore(crate::simulation::robot_ai::types::ExploreTask {
+                task_type: TaskType::Explore(crate::application::robot_ai::types::ExploreTask {
                     target_area: exploration_target,
                     radius: 2,
                 }),
@@ -85,8 +85,8 @@ impl HarvesterBehavior {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::application::robot_ai::types::{RobotState, RobotType, TaskType};
     use crate::simulation::entities::{Map, ResourceType, Station};
-    use crate::simulation::robot_ai::types::{RobotState, RobotType, TaskType};
     use std::collections::HashMap;
 
     fn create_test_robot(x: usize, y: usize, energy: u32) -> Robot {

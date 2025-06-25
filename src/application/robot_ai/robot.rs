@@ -1,10 +1,10 @@
+use crate::application::robot_ai::behavior::RobotBehavior;
+use crate::application::robot_ai::executor::Executor;
+use crate::application::robot_ai::pathfinding::Pathfinder;
+use crate::application::robot_ai::types::{Direction, RobotState, RobotType, Task, TaskType};
+use crate::domain::values::terrain::TerrainType;
+use crate::infrastructure::threading::simulation_runner::SimulationMessage;
 use crate::simulation::entities::{Map, ResourceType, Station};
-use crate::simulation::map::TerrainType;
-use crate::simulation::robot_ai::behavior::RobotBehavior;
-use crate::simulation::robot_ai::executor::Executor;
-use crate::simulation::robot_ai::pathfinding::Pathfinder;
-use crate::simulation::robot_ai::types::{Direction, RobotState, RobotType, Task, TaskType};
-use crate::simulation::threading::SimulationMessage;
 use tokio::sync::mpsc::Sender;
 
 pub struct Robot {
@@ -20,7 +20,7 @@ pub struct Robot {
 
 impl Robot {
     pub fn new(id: usize, robot_type: RobotType, x: usize, y: usize, energy: u32) -> Self {
-        let behavior = crate::simulation::robot_ai::behavior::create_behavior(&robot_type);
+        let behavior = crate::application::robot_ai::behavior::create_behavior(&robot_type);
         Self {
             id,
             robot_type,

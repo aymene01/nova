@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod map_tests {
+    use crate::application::robot_ai::robot::Robot;
+    use crate::application::robot_ai::types::{Direction, RobotType};
+    use crate::domain::values::terrain::TerrainType;
     use crate::simulation::entities::{Map, ResourceType};
-    use crate::simulation::map::TerrainType;
-    use crate::simulation::robot_ai::robot::Robot;
-    use crate::simulation::robot_ai::types::{Direction, RobotType};
 
     #[test]
     fn test_map_creation() {
@@ -218,8 +218,8 @@ mod map_tests {
 
     #[test]
     fn test_robots_can_walk_on_hills_with_extra_cost() {
-        use crate::simulation::robot_ai::robot::Robot;
-        use crate::simulation::robot_ai::types::{Direction, RobotType};
+        use crate::application::robot_ai::robot::Robot;
+        use crate::application::robot_ai::types::{Direction, RobotType};
 
         let mut map = Map::new(5, 5, 42);
         map.terrain[2][2] = 1;
@@ -251,8 +251,8 @@ mod map_tests {
 
     #[test]
     fn test_robots_cannot_walk_on_mountains() {
-        use crate::simulation::robot_ai::robot::Robot;
-        use crate::simulation::robot_ai::types::{Direction, RobotType};
+        use crate::application::robot_ai::robot::Robot;
+        use crate::application::robot_ai::types::{Direction, RobotType};
 
         let mut map = Map::new(5, 5, 42);
         map.terrain[2][2] = 2;

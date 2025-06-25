@@ -1,185 +1,15 @@
-use crate::simulation::robot_ai::robot::Robot;
-use noise::Perlin;
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
-
-pub const STATION_RECHARGE_RATE: u32 = 50;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ResourceType {
-    Energy,
-    Mineral,
-    ScientificInterest,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct LocationInfo {
-    pub position: (usize, usize),
-    pub terrain_type: u8,
-    pub resource: Option<(ResourceType, u32)>,
-    pub discovered_by: usize,
-    pub discovery_time: u64,
-    pub confidence: f32,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct InformationConflict {
-    pub position: (usize, usize),
-    pub current_info: LocationInfo,
-    pub new_info: LocationInfo,
-    pub conflict_type: ConflictType,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ConflictType {
-    ResourceAmountDifference,
-    ResourceTypeConflict,
-    TerrainMismatch,
-    ConfidenceConflict,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ConflictResolution {
-    KeepCurrent,
-    AcceptNew,
-    Merge,
-    RequiresManualReview,
-}
-
-pub struct Map {
-    pub width: usize,
-    pub height: usize,
-    pub terrain: Vec<Vec<u8>>,
-    pub resources: HashMap<(usize, usize), (ResourceType, u32)>,
-    pub discovered: Vec<Vec<bool>>,
-    pub discovered_resources: HashMap<(usize, usize), (ResourceType, u32)>,
-    pub noise: Perlin,
-    pub seed: u64,
-}
-
-impl Serialize for Map {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("Map", 6)?;
-        state.serialize_field("width", &self.width)?;
-        state.serialize_field("height", &self.height)?;
-        state.serialize_field("terrain", &self.terrain)?;
-
-        let resources_vec: Vec<((usize, usize), (ResourceType, u32))> = self
-            .resources
-            .iter()
-            .map(|(&k, v)| (k, v.clone()))
-            .collect();
-        state.serialize_field("resources", &resources_vec)?;
-
-        state.serialize_field("discovered", &self.discovered)?;
-        state.serialize_field("seed", &self.seed)?;
-        state.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for Map {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct MapHelper {
-            width: usize,
-            height: usize,
-            terrain: Vec<Vec<u8>>,
-            resources: Vec<((usize, usize), (ResourceType, u32))>,
-            discovered: Vec<Vec<bool>>,
-            seed: u64,
-        }
-
-        let helper = MapHelper::deserialize(deserializer)?;
-        let resources: HashMap<(usize, usize), (ResourceType, u32)> =
-            helper.resources.into_iter().collect();
-        let noise = Perlin::new(helper.seed as u32);
-
-        Ok(Map {
-            width: helper.width,
-            height: helper.height,
-            terrain: helper.terrain,
-            resources,
-            discovered: helper.discovered,
-            discovered_resources: HashMap::new(),
-            noise,
-            seed: helper.seed,
-        })
-    }
-}
-pub struct Station {
-    pub resources: HashMap<ResourceType, u32>,
-    pub discoveries: u32,
-    pub x: usize,
-    pub y: usize,
-}
-
-impl Station {
-    pub fn new(x: usize, y: usize) -> Self {
-        Self {
-            resources: HashMap::new(),
-            discoveries: 0,
-            x,
-            y,
-        }
-    }
-
-    pub fn position(&self) -> (usize, usize) {
-        (self.x, self.y)
-    }
-
-    pub fn receive_resource(&mut self, resource_type: ResourceType, amount: u32) {
-        let resource_type_clone = resource_type.clone();
-        *self.resources.entry(resource_type_clone).or_insert(0) += amount;
-        if resource_type == ResourceType::ScientificInterest {
-            self.discoveries += 1;
-        }
-    }
-
-    pub fn get_resource_amount(&self, resource_type: &ResourceType) -> u32 {
-        *self.resources.get(resource_type).unwrap_or(&0)
-    }
-
-    pub fn robot_at_station(&self, robot_position: (usize, usize)) -> bool {
-        robot_position == self.position()
-    }
-
-    pub fn recharge_robot(&mut self, robot: &mut Robot) -> Result<u32, &'static str> {
-        let energy_available = self.get_resource_amount(&ResourceType::Energy);
-        if energy_available == 0 {
-            return Err("No energy available for recharging");
-        }
-
-        let energy_needed = robot.max_energy() - robot.energy();
-        if energy_needed == 0 {
-            return Err("Robot is already at full energy");
-        }
-
-        let energy_to_transfer = std::cmp::min(energy_needed, STATION_RECHARGE_RATE);
-        let actual_transfer = std::cmp::min(energy_to_transfer, energy_available);
-
-        robot.recharge(actual_transfer);
-        self.resources
-            .insert(ResourceType::Energy, energy_available - actual_transfer);
-
-        Ok(actual_transfer)
-    }
-
-    pub fn can_recharge(&self) -> bool {
-        self.get_resource_amount(&ResourceType::Energy) > 0
-    }
-}
+// Re-export for backward compatibility during refactoring
+pub use crate::domain::entities::map::Map;
+pub use crate::domain::entities::station::Station;
+pub use crate::domain::values::resource::ResourceType;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::simulation::robot_ai::types::{Direction, RobotType};
+    use crate::application::robot_ai::robot::Robot;
+    use crate::application::robot_ai::types::{Direction, RobotType};
+    use crate::domain::entities::map::Map;
+    use crate::domain::entities::station::Station;
+    use crate::domain::values::resource::ResourceType;
 
     #[test]
     fn robot_creation_works() {
@@ -270,7 +100,7 @@ mod tests {
 
         assert_eq!(station.position(), (5, 5));
         assert_eq!(station.discoveries, 0);
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 0);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100);
     }
 
     #[test]
@@ -279,7 +109,7 @@ mod tests {
 
         station.receive_resource(ResourceType::Energy, 50);
 
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 150); // 100 (initial) + 50 (added)
         assert_eq!(station.discoveries, 0);
     }
 
@@ -304,7 +134,7 @@ mod tests {
         station.receive_resource(ResourceType::Energy, 20);
         station.receive_resource(ResourceType::Mineral, 40);
 
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 150); // 100 (initial) + 30 + 20
         assert_eq!(station.get_resource_amount(&ResourceType::Mineral), 40);
     }
 
@@ -316,7 +146,7 @@ mod tests {
         let result = robot.deliver_resource(&mut station);
 
         assert!(result.is_err());
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 0);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100);
     }
 
     #[test]
@@ -341,12 +171,14 @@ mod tests {
         let recharged = result.unwrap();
         assert_eq!(recharged, 50);
         assert_eq!(robot.energy(), 80);
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 150); // 100 (initial) + 100 (added) - 50 (used)
     }
 
     #[test]
     fn station_cannot_recharge_without_energy() {
         let mut station = Station::new(5, 5);
+        // Remove all energy to test the failure case
+        station.resources.insert(ResourceType::Energy, 0);
 
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
 
@@ -367,12 +199,14 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(robot.energy(), robot.max_energy());
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 200); // 100 (initial) + 100 (added), no energy used
     }
 
     #[test]
     fn station_recharges_partial_when_limited_energy() {
         let mut station = Station::new(5, 5);
+        // Reset to 0 first, then add 20 to test limited energy scenario
+        station.resources.insert(ResourceType::Energy, 0);
         station.receive_resource(ResourceType::Energy, 20);
 
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
@@ -399,12 +233,14 @@ mod tests {
         let recharged = result.unwrap();
         assert_eq!(recharged, 10);
         assert_eq!(robot.energy(), 100);
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 90);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 190); // 100 (initial) + 100 (added) - 10 (used)
     }
 
     #[test]
     fn station_can_recharge_check_works() {
         let mut station = Station::new(0, 0);
+        // Start with no energy for this test
+        station.resources.insert(ResourceType::Energy, 0);
 
         assert!(!station.can_recharge());
 

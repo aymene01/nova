@@ -1,6 +1,6 @@
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::Task;
 use crate::simulation::entities::{Map, Station};
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::Task;
 
 pub trait RobotBehavior: Send {
     fn decide_next_action(&self, robot: &Robot, map: &Map, station: &Station) -> Option<Task>;
@@ -10,17 +10,17 @@ pub trait RobotBehavior: Send {
 }
 
 pub fn create_behavior(
-    robot_type: &crate::simulation::robot_ai::types::RobotType,
+    robot_type: &crate::application::robot_ai::types::RobotType,
 ) -> Box<dyn RobotBehavior> {
     match robot_type {
-        crate::simulation::robot_ai::types::RobotType::Explorer => {
-            Box::new(crate::simulation::robot_ai::behaviors::ExplorerBehavior)
+        crate::application::robot_ai::types::RobotType::Explorer => {
+            Box::new(crate::application::robot_ai::behaviors::ExplorerBehavior)
         }
-        crate::simulation::robot_ai::types::RobotType::Harvester => {
-            Box::new(crate::simulation::robot_ai::behaviors::HarvesterBehavior)
+        crate::application::robot_ai::types::RobotType::Harvester => {
+            Box::new(crate::application::robot_ai::behaviors::HarvesterBehavior)
         }
-        crate::simulation::robot_ai::types::RobotType::Scientist => {
-            Box::new(crate::simulation::robot_ai::behaviors::ScientistBehavior)
+        crate::application::robot_ai::types::RobotType::Scientist => {
+            Box::new(crate::application::robot_ai::behaviors::ScientistBehavior)
         }
     }
 }
@@ -28,7 +28,7 @@ pub fn create_behavior(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::robot_ai::types::RobotType;
+    use crate::application::robot_ai::types::RobotType;
 
     #[test]
     fn test_create_explorer_behavior() {
