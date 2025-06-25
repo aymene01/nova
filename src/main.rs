@@ -137,3 +137,11 @@ fn draw_tui(
 
     Ok(())
 }
+
+fn schedule_robot_start_times(robot_count: usize) -> Vec<Instant> {
+    let mut start_times = Vec::new();
+    for i in 0..robot_count {
+        start_times.push(Instant::now() + Duration::from_millis(i as u64 * 1000));
+    }
+    start_times
+}
