@@ -30,4 +30,4 @@ impl TerrainType {
             TerrainType::Mountain | TerrainType::Canyon => 0,
         }
     }
-} 
+}

@@ -1,14 +1,16 @@
+mod application;
 mod cli;
 mod config;
-mod simulation;
 mod domain;
-mod application;
 mod infrastructure;
+mod simulation;
 
+use crate::infrastructure::threading::simulation_runner::{
+    RobotThreadManager, SharedState, SimulationMessage,
+};
 use crate::simulation::entities::{Map, Station};
 use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::RobotType;
-use crate::infrastructure::threading::simulation_runner::{RobotThreadManager, SharedState, SimulationMessage};
 
 use config::Config;
 use crossterm::{
@@ -157,7 +159,7 @@ fn draw_tui(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     shared_state: &SharedState,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use crate::simulation::visualization::MapVisualizer;
+    use crate::infrastructure::presentation::tui_renderer::MapVisualizer;
 
     let map = shared_state.get_map();
     let robots = shared_state.get_robots();
@@ -169,7 +171,7 @@ fn draw_tui(
 
     terminal.draw(|f| {
         let app =
-            crate::simulation::visualization::App::new(&map_guard, &robots_guard, &station_guard);
+            crate::infrastructure::presentation::tui_renderer::App::new(&map_guard, &robots_guard, &station_guard);
         MapVisualizer::ui(f, &app);
     })?;
 

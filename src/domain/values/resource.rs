@@ -5,4 +5,4 @@ pub enum ResourceType {
     Energy,
     Mineral,
     ScientificInterest,
-} 
+}

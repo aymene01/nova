@@ -30,4 +30,4 @@ impl From<Position> for (usize, usize) {
     fn from(pos: Position) -> Self {
         (pos.x, pos.y)
     }
-} 
+}

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod map_tests {
-    use crate::simulation::entities::{Map, ResourceType};
     use crate::domain::values::terrain::TerrainType;
+    use crate::simulation::entities::{Map, ResourceType};
     use crate::simulation::robot_ai::robot::Robot;
     use crate::simulation::robot_ai::types::{Direction, RobotType};
 

@@ -1,5 +1,5 @@
-use crate::simulation::entities::{Map, ResourceType};
 use crate::domain::values::terrain::TerrainType;
+use crate::simulation::entities::{Map, ResourceType};
 use noise::{NoiseFn, Perlin};
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
@@ -131,5 +131,3 @@ impl Map {
         }
     }
 }
-
-

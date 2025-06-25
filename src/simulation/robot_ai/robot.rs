@@ -1,10 +1,10 @@
-use crate::simulation::entities::{Map, ResourceType, Station};
 use crate::domain::values::terrain::TerrainType;
+use crate::infrastructure::threading::simulation_runner::SimulationMessage;
+use crate::simulation::entities::{Map, ResourceType, Station};
 use crate::simulation::robot_ai::behavior::RobotBehavior;
 use crate::simulation::robot_ai::executor::Executor;
 use crate::simulation::robot_ai::pathfinding::Pathfinder;
 use crate::simulation::robot_ai::types::{Direction, RobotState, RobotType, Task, TaskType};
-use crate::infrastructure::threading::simulation_runner::SimulationMessage;
 use tokio::sync::mpsc::Sender;
 
 pub struct Robot {
