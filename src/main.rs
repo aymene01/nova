@@ -8,7 +8,7 @@ mod infrastructure;
 use crate::simulation::entities::{Map, Station};
 use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::RobotType;
-use crate::simulation::threading::{RobotThreadManager, SharedState, SimulationMessage};
+use crate::infrastructure::threading::simulation_runner::{RobotThreadManager, SharedState, SimulationMessage};
 
 use config::Config;
 use crossterm::{
