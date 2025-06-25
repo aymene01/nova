@@ -1,0 +1,11 @@
+target/
+.git/
+.github/
+docs/
+*.md
+licence
+.gitignore
+Dockerfile
+.dockerignore
+release-please-config.json
+.release-please-manifest.json 
