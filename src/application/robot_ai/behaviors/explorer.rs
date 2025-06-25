@@ -1,8 +1,8 @@
 use crate::simulation::entities::{Map, Station};
-use crate::simulation::robot_ai::behavior::RobotBehavior;
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::{ExploreTask, Task, TaskType};
-use crate::simulation::robot_ai::utils::SearchUtils;
+use crate::application::robot_ai::behavior::RobotBehavior;
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::{ExploreTask, Task, TaskType};
+use crate::application::robot_ai::utils::SearchUtils;
 
 pub struct ExplorerBehavior;
 
@@ -88,7 +88,7 @@ impl ExplorerBehavior {
 mod tests {
     use super::*;
     use crate::simulation::entities::{Map, ResourceType, Station};
-    use crate::simulation::robot_ai::types::{RobotState, RobotType, TaskType};
+    use crate::application::robot_ai::types::{RobotState, RobotType, TaskType};
     use std::collections::HashMap;
 
     fn create_test_robot(x: usize, y: usize, energy: u32) -> Robot {

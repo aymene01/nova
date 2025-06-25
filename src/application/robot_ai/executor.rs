@@ -1,8 +1,8 @@
 use crate::infrastructure::threading::simulation_runner::SimulationMessage;
 use crate::simulation::entities::{Map, Station};
-use crate::simulation::robot_ai::pathfinding::Pathfinder;
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::{AnalyzeTask, ExploreTask, HarvestTask, RobotState};
+use crate::application::robot_ai::pathfinding::Pathfinder;
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::{AnalyzeTask, ExploreTask, HarvestTask, RobotState};
 use tokio::sync::mpsc::Sender;
 
 pub struct Executor;

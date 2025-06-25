@@ -1,8 +1,8 @@
 use crate::simulation::entities::{Map, Station};
-use crate::simulation::robot_ai::behavior::RobotBehavior;
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::{AnalysisType, AnalyzeTask, Task, TaskType};
-use crate::simulation::robot_ai::utils::SearchUtils;
+use crate::application::robot_ai::behavior::RobotBehavior;
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::{AnalysisType, AnalyzeTask, Task, TaskType};
+use crate::application::robot_ai::utils::SearchUtils;
 
 pub struct ScientistBehavior;
 
@@ -29,7 +29,7 @@ impl RobotBehavior for ScientistBehavior {
 
         if let Some(exploration_target) = self.find_systematic_exploration_target(robot, map) {
             return Some(Task {
-                task_type: TaskType::Explore(crate::simulation::robot_ai::types::ExploreTask {
+                task_type: TaskType::Explore(crate::application::robot_ai::types::ExploreTask {
                     target_area: exploration_target,
                     radius: 3,
                 }),
@@ -72,7 +72,7 @@ impl ScientistBehavior {
 mod tests {
     use super::*;
     use crate::simulation::entities::{Map, ResourceType, Station};
-    use crate::simulation::robot_ai::types::{RobotState, RobotType, TaskType};
+    use crate::application::robot_ai::types::{RobotState, RobotType, TaskType};
     use std::collections::HashMap;
 
     fn create_test_robot(x: usize, y: usize, energy: u32) -> Robot {

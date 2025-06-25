@@ -1,6 +1,6 @@
 use crate::simulation::entities::{Map, Station};
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::Task;
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::Task;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::time::{Duration, Instant};

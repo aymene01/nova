@@ -1,7 +1,7 @@
 use crate::domain::values::terrain::TerrainType;
 use crate::simulation::entities::{Map, ResourceType, Station};
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::RobotType;
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::RobotType;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},

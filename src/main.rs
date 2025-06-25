@@ -9,8 +9,8 @@ use crate::infrastructure::threading::simulation_runner::{
     RobotThreadManager, SharedState, SimulationMessage,
 };
 use crate::simulation::entities::{Map, Station};
-use crate::simulation::robot_ai::robot::Robot;
-use crate::simulation::robot_ai::types::RobotType;
+use crate::application::robot_ai::robot::Robot;
+use crate::application::robot_ai::types::RobotType;
 
 use config::Config;
 use crossterm::{

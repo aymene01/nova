@@ -1,4 +1,4 @@
-use crate::simulation::robot_ai::robot::Robot;
+use crate::application::robot_ai::robot::Robot;
 use noise::Perlin;
 
 // Re-export for backward compatibility during refactoring
@@ -177,7 +177,7 @@ impl Station {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulation::robot_ai::types::{Direction, RobotType};
+    use crate::application::robot_ai::types::{Direction, RobotType};
 
     #[test]
     fn robot_creation_works() {
