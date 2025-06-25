@@ -195,16 +195,15 @@ mod tests {
     use noise::Perlin;
 
     fn create_test_map(width: usize, height: usize) -> Map {
-        let map = Map {
+        Map {
             width,
             height,
-            terrain: vec![vec![0; width]; height], // All plain terrain (traversable)
+            terrain: vec![vec![0; width]; height],
             resources: HashMap::new(),
             discovered: vec![vec![false; width]; height],
             noise: Perlin::new(42),
             seed: 42,
-        };
-        map
+        }
     }
 
     fn create_map_with_obstacles(
@@ -463,10 +462,8 @@ mod tests {
     #[test]
     fn test_get_safe_random_direction_from_position_edge() {
         let map = create_test_map(5, 5);
-        // Test from edge position - should only return valid directions
         let direction = Pathfinder::get_safe_random_direction_from_position(&map, 0, 0);
         if let Some(dir) = direction {
-            // Should only be able to move South or East from (0,0)
             assert!(matches!(dir, Direction::South | Direction::East));
         }
     }
@@ -474,10 +471,8 @@ mod tests {
     #[test]
     fn test_get_safe_random_direction_from_position_corner() {
         let map = create_test_map(5, 5);
-        // Test from corner position
         let direction = Pathfinder::get_safe_random_direction_from_position(&map, 4, 4);
         if let Some(dir) = direction {
-            // Should only be able to move North or West from (4,4)
             assert!(matches!(dir, Direction::North | Direction::West));
         }
     }
@@ -485,11 +480,10 @@ mod tests {
     #[test]
     fn test_get_safe_random_direction_from_position_with_obstacles() {
         let mut map = create_test_map(5, 5);
-        // Add obstacles around position (2,2) - use mountains (2) for impassable terrain
-        map.terrain[1][2] = 2; // North blocked
-        map.terrain[3][2] = 2; // South blocked
-        map.terrain[2][1] = 2; // West blocked
-        map.terrain[2][3] = 2; // East blocked
+        map.terrain[1][2] = 2;
+        map.terrain[3][2] = 2;
+        map.terrain[2][1] = 2;
+        map.terrain[2][3] = 2;
 
         let direction = Pathfinder::get_safe_random_direction_from_position(&map, 2, 2);
         assert!(

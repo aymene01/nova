@@ -195,14 +195,21 @@ mod tests {
     fn robot_move_north_with_sufficient_energy() {
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 50);
 
-        let result = robot.move_in_direction(Direction::North, &Map::new(10, 10, 42));
+        let mut map = Map::new(10, 10, 42);
+        for row in map.terrain.iter_mut() {
+            for cell in row.iter_mut() {
+                *cell = 0;
+            }
+        }
+
+        let result = robot.move_in_direction(Direction::North, &map);
         assert!(result.is_ok());
         if let Ok(movement_cost) = result {
             robot.consume_energy_for_movement(movement_cost).unwrap();
         }
 
-        assert_eq!(robot.position(), (5, 4)); // North reduces Y
-        assert_eq!(robot.energy(), 50 - robot.energy_consumption_rate()); // Base cost only for plain terrain
+        assert_eq!(robot.position(), (5, 4));
+        assert_eq!(robot.energy(), 50 - robot.energy_consumption_rate());
     }
 
     #[test]

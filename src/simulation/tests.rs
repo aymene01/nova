@@ -166,6 +166,11 @@ mod map_tests {
         map.resources
             .insert((2, 3), (ResourceType::ScientificInterest, 8));
 
+        map.terrain[1][2] = 0;
+        map.terrain[2][2] = 0;
+        map.terrain[2][3] = 0;
+        map.terrain[3][2] = 0;
+
         let mut explorer = Robot::new(1, RobotType::Explorer, 1, 1, 100);
 
         let result = explorer.move_in_direction(Direction::East, &map);

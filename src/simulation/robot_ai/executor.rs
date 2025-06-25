@@ -38,7 +38,6 @@ impl Executor {
             return Ok(());
         }
         Executor::move_towards_target(robot, map, target_pos)?;
-        // Mark current position as discovered for exploration tasks
         if robot.x < map.width && robot.y < map.height {
             map.discovered[robot.y][robot.x] = true;
         }
@@ -121,8 +120,6 @@ impl Executor {
                             // println!("Error recharging robot");
                         }
                     }
-                } else {
-                    // println!("Station is full, cannot recharge robot");
                 }
             }
             robot.set_state(RobotState::Idle);

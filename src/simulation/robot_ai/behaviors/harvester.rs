@@ -180,8 +180,16 @@ mod tests {
     #[test]
     fn test_harvester_finds_exploration_target() {
         let harvester = HarvesterBehavior;
-        let map = create_test_map();
+        let mut map = create_test_map();
         let robot = create_test_robot(3, 3, 50);
+
+        for row in map.discovered.iter_mut() {
+            for cell in row.iter_mut() {
+                *cell = true;
+            }
+        }
+        map.discovered[3][2] = false;
+        map.terrain[3][2] = 0;
 
         let result = harvester.find_exploration_target(&robot, &map);
         assert!(result.is_some());

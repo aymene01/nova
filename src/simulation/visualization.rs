@@ -245,7 +245,7 @@ impl<'a> App<'a> {
         let mut mineral_count = 0;
         let mut scientific_count = 0;
 
-        for (_, (resource_type, amount)) in &map.resources {
+        for (resource_type, amount) in map.resources.values() {
             match resource_type {
                 ResourceType::Energy => energy_count += amount,
                 ResourceType::Mineral => mineral_count += amount,
