@@ -122,8 +122,10 @@ pub struct Station {
 
 impl Station {
     pub fn new(x: usize, y: usize) -> Self {
+        let mut resources = HashMap::new();
+        resources.insert(ResourceType::Energy, 100);
         Self {
-            resources: HashMap::new(),
+            resources,
             discoveries: 0,
             x,
             y,
@@ -270,7 +272,7 @@ mod tests {
 
         assert_eq!(station.position(), (5, 5));
         assert_eq!(station.discoveries, 0);
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 0);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100);
     }
 
     #[test]
@@ -316,7 +318,7 @@ mod tests {
         let result = robot.deliver_resource(&mut station);
 
         assert!(result.is_err());
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 0);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100);
     }
 
     #[test]
@@ -347,6 +349,8 @@ mod tests {
     #[test]
     fn station_cannot_recharge_without_energy() {
         let mut station = Station::new(5, 5);
+        // Remove all energy to test the failure case
+        station.resources.insert(ResourceType::Energy, 0);
 
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
 
@@ -405,6 +409,8 @@ mod tests {
     #[test]
     fn station_can_recharge_check_works() {
         let mut station = Station::new(0, 0);
+        // Start with no energy for this test
+        station.resources.insert(ResourceType::Energy, 0);
 
         assert!(!station.can_recharge());
 
