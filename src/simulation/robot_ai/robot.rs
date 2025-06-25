@@ -1,5 +1,5 @@
 use crate::simulation::entities::{Map, ResourceType, Station};
-use crate::simulation::map::TerrainType;
+use crate::domain::values::terrain::TerrainType;
 use crate::simulation::robot_ai::behavior::RobotBehavior;
 use crate::simulation::robot_ai::executor::Executor;
 use crate::simulation::robot_ai::pathfinding::Pathfinder;

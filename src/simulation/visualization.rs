@@ -1,5 +1,5 @@
 use crate::simulation::entities::{Map, ResourceType, Station};
-use crate::simulation::map::TerrainType;
+use crate::domain::values::terrain::TerrainType;
 use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::RobotType;
 use ratatui::{
