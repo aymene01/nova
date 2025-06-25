@@ -1,4 +1,4 @@
-use crate::simulation::entities::{Map, ResourceType};
+use crate::simulation::entities::{Map, ResourceType, Station};
 use crate::simulation::map::TerrainType;
 use crate::simulation::robot_ai::robot::Robot;
 use crate::simulation::robot_ai::types::RobotType;
@@ -112,9 +112,25 @@ impl MapVisualizer {
             App::calculate_resource_stats(app.map);
         let (explorers, harvesters, scientists) = app.get_robot_stats();
 
+        let station_energy = app
+            .station
+            .resources
+            .get(&ResourceType::Energy)
+            .unwrap_or(&0);
+        let station_minerals = app
+            .station
+            .resources
+            .get(&ResourceType::Mineral)
+            .unwrap_or(&0);
+        let station_scientific = app
+            .station
+            .resources
+            .get(&ResourceType::ScientificInterest)
+            .unwrap_or(&0);
+
         let resource_text = vec![
             Line::from(vec![Span::styled(
-                "Resources",
+                "Map Resources",
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
@@ -137,6 +153,34 @@ impl MapVisualizer {
                 Span::raw("Scientific: "),
                 Span::styled(
                     format!("{}", scientific_count),
+                    Style::default().fg(Color::Magenta),
+                ),
+            ]),
+            Line::from(vec![Span::raw("--------------------------------")]),
+            Line::from(vec![Span::styled(
+                "Station Resources",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )]),
+            Line::from(vec![
+                Span::raw("Station Energy: "),
+                Span::styled(
+                    format!("{}", station_energy),
+                    Style::default().fg(Color::Green),
+                ),
+            ]),
+            Line::from(vec![
+                Span::raw("Station Minerals: "),
+                Span::styled(
+                    format!("{}", station_minerals),
+                    Style::default().fg(Color::Blue),
+                ),
+            ]),
+            Line::from(vec![
+                Span::raw("Station Scientific: "),
+                Span::styled(
+                    format!("{}", station_scientific),
                     Style::default().fg(Color::Magenta),
                 ),
             ]),
@@ -228,15 +272,17 @@ pub struct App<'a> {
     robots: &'a [Robot],
     scroll_x: usize,
     scroll_y: usize,
+    station: &'a Station,
 }
 
 impl<'a> App<'a> {
-    pub fn new(map: &'a Map, robots: &'a [Robot]) -> Self {
+    pub fn new(map: &'a Map, robots: &'a [Robot], station: &'a Station) -> Self {
         Self {
             map,
             robots,
             scroll_x: 0,
             scroll_y: 0,
+            station,
         }
     }
 

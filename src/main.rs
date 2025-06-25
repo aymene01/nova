@@ -158,12 +158,15 @@ fn draw_tui(
 
     let map = shared_state.get_map();
     let robots = shared_state.get_robots();
+    let station = shared_state.get_station();
 
     let map_guard = map.lock().unwrap();
     let robots_guard = robots.lock().unwrap();
+    let station_guard = station.lock().unwrap();
 
     terminal.draw(|f| {
-        let app = crate::simulation::visualization::App::new(&map_guard, &robots_guard);
+        let app =
+            crate::simulation::visualization::App::new(&map_guard, &robots_guard, &station_guard);
         MapVisualizer::ui(f, &app);
     })?;
 
