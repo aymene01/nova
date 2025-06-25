@@ -79,12 +79,7 @@ async fn start_simulation(config: Config) {
     let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
 
     let mut last_update = Instant::now();
-    let mut robot_start_times = Vec::new();
-
-    for i in 0..robots.len() {
-        robot_start_times.push(Instant::now() + Duration::from_millis(i as u64 * 1000)); // 1 second delay between each robot
-    }
-
+    let robot_start_times = schedule_robot_start_times(robots.len());
     let result = loop {
         if last_update.elapsed() >= Duration::from_millis(500) {
             for (i, robot) in robots.iter_mut().enumerate() {
