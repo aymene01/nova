@@ -1,6 +1,8 @@
 use crate::simulation::robot_ai::robot::Robot;
-use crate::domain::values::resource::ResourceType;
 use noise::Perlin;
+
+// Re-export for backward compatibility during refactoring
+pub use crate::domain::values::resource::ResourceType;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
