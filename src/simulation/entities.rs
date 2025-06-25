@@ -109,7 +109,7 @@ mod tests {
 
         station.receive_resource(ResourceType::Energy, 50);
 
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 150); // 100 (initial) + 50 (added)
         assert_eq!(station.discoveries, 0);
     }
 
@@ -134,7 +134,7 @@ mod tests {
         station.receive_resource(ResourceType::Energy, 20);
         station.receive_resource(ResourceType::Mineral, 40);
 
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 150); // 100 (initial) + 30 + 20
         assert_eq!(station.get_resource_amount(&ResourceType::Mineral), 40);
     }
 
@@ -171,7 +171,7 @@ mod tests {
         let recharged = result.unwrap();
         assert_eq!(recharged, 50);
         assert_eq!(robot.energy(), 80);
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 50);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 150); // 100 (initial) + 100 (added) - 50 (used)
     }
 
     #[test]
@@ -199,12 +199,14 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(robot.energy(), robot.max_energy());
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 100);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 200); // 100 (initial) + 100 (added), no energy used
     }
 
     #[test]
     fn station_recharges_partial_when_limited_energy() {
         let mut station = Station::new(5, 5);
+        // Reset to 0 first, then add 20 to test limited energy scenario
+        station.resources.insert(ResourceType::Energy, 0);
         station.receive_resource(ResourceType::Energy, 20);
 
         let mut robot = Robot::new(1, RobotType::Explorer, 5, 5, 30);
@@ -231,7 +233,7 @@ mod tests {
         let recharged = result.unwrap();
         assert_eq!(recharged, 10);
         assert_eq!(robot.energy(), 100);
-        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 90);
+        assert_eq!(station.get_resource_amount(&ResourceType::Energy), 190); // 100 (initial) + 100 (added) - 10 (used)
     }
 
     #[test]
