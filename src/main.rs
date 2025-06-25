@@ -40,7 +40,6 @@ async fn start_simulation(config: Config) {
     // Give station initial energy for recharging robots
     station.receive_resource(crate::simulation::entities::ResourceType::Energy, 10000);
 
-    // Create robots positioned around the station
     let mut robots = Vec::new();
     for i in 0..config.robots_count {
         let robot_type = match i % 3 {
@@ -49,7 +48,6 @@ async fn start_simulation(config: Config) {
             _ => RobotType::Scientist,
         };
 
-        // Start robots in a large circle around the station
         let station_pos = station.position();
         // let angle = (i as f64) * 2.0 * std::f64::consts::PI / (config.robots_count as f64);
         // let radius = 8.0;
@@ -60,12 +58,10 @@ async fn start_simulation(config: Config) {
         // // Ensure robot position is within map bounds with padding
         // let robot_x = robot_x.min(config.map_width - 2).max(1);
         // let robot_y = robot_y.min(config.map_height - 2).max(1);
-
         let robot = Robot::new(i, robot_type, station_pos.0, station_pos.1, 100);
         robots.push(robot);
     }
 
-    // Save the initial map
     let map_path = format!("map_seed_{}.json", config.seed);
     if let Err(e) = map.save_to_file(&map_path) {
         eprintln!("Failed to save map: {}", e);
@@ -74,26 +70,30 @@ async fn start_simulation(config: Config) {
     }
 
     println!("Simulation running... Press 'q' in TUI to quit");
-    tokio::time::sleep(Duration::from_millis(2000)).await; // Give user time to read
+    tokio::time::sleep(Duration::from_millis(2000)).await;
 
-    // Setup persistent TUI
     enable_raw_mode().expect("Failed to enable raw mode");
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen).expect("Failed to enter alternate screen");
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).expect("Failed to create terminal");
 
-    // Simple simulation loop with RANDOM MOVEMENT + PERSISTENT TUI
     let mut last_update = Instant::now();
+    let mut robot_start_times = Vec::new();
+
+    for i in 0..robots.len() {
+        robot_start_times.push(Instant::now() + Duration::from_millis(i as u64 * 1000)); // 1 second delay between each robot
+    }
 
     let result = loop {
-        // Update robots every 500ms
         if last_update.elapsed() >= Duration::from_millis(500) {
-            for robot in &mut robots {
-                let action = robot.decide_next_action(&map, &station);
+            for (i, robot) in robots.iter_mut().enumerate() {
+                if Instant::now() >= robot_start_times[i] {
+                    let action = robot.decide_next_action(&map, &station);
 
-                if let Err(e) = robot.execute_action(&mut map, &mut station, action) {
-                    eprintln!("Robot {} failed to execute action: {}", robot.id, e);
+                    if let Err(e) = robot.execute_action(&mut map, &mut station, action) {
+                        eprintln!("Robot {} failed to execute action: {}", robot.id, e);
+                    }
                 }
             }
 
